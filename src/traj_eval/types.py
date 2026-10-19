@@ -13,7 +13,12 @@ class TrajectoryStep:
         step: Monotonic step index (0-based). Used to order steps.
         prediction: The model's current verdict / answer at this step.
             For multiple-choice, e.g. "A", "B", "C", "D". For free-form,
-            a normalized answer string.
+            a normalized answer string. ``None`` means no verdict yet
+            (e.g. Dream adapter: generation region still all masks, no
+            decodable letter). Metrics treat ``None`` as "no verdict",
+            not as a distinct answer: flips are counted only between
+            two non-null verdicts, and convergence is computed over
+            the non-null suffix.
         reasoning_text: The model's current reasoning / rationale text at
             this step, if available. May be empty when a model only exposes
             a verdict.
@@ -22,7 +27,7 @@ class TrajectoryStep:
     """
 
     step: int
-    prediction: str
+    prediction: str | None
     reasoning_text: str = ""
     confidence: float | None = None
     logits: list[float] | None = None
@@ -54,14 +59,26 @@ class Trajectory:
 
     @property
     def final_prediction(self) -> str | None:
-        """Prediction at the last step, or None if there are no steps."""
+        """Prediction at the last step, or None if there are no steps.
+
+        Note: this may also be None if the last step itself has no
+        verdict (e.g. Dream adapter all-mask final step). Callers
+        should treat None as "no verdict".
+        """
         if not self.steps:
             return None
         return self.steps[-1].prediction
 
     @property
     def is_correct(self) -> bool | None:
-        """True/False if gold is known and steps exist, else None."""
+        """True/False if gold is known and steps exist, else None.
+
+        Returns None when gold is unknown, when there are no steps,
+        or when the final step has no verdict (final_prediction is None).
+        """
         if not self.steps or self.gold_answer == "":
             return None
-        return self.final_prediction == self.gold_answer
+        final = self.final_prediction
+        if final is None:
+            return None
+        return final == self.gold_answer

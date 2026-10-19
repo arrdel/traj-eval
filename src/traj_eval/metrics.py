@@ -34,19 +34,26 @@ from traj_eval.types import Trajectory
 def _convergence_index(traj: Trajectory) -> int | None:
     """Index of the first step of the longest stable suffix.
 
-    Returns None for an empty trajectory. Otherwise always returns an
-    index: at minimum, the last step is trivially a stable suffix of
-    length 1. This is the "first step after which prediction stays
-    constant to the end" definition.
+    Null-aware (Dream adapter): ``None`` means "no verdict yet" and
+    is not a distinct answer. Convergence is computed over the
+    non-null verdict sequence, then mapped back to the original
+    index. Returns None for an empty trajectory or for a trajectory
+    with no non-null verdict at all. Otherwise always returns an
+    index: at minimum, the last non-null step is trivially a stable
+    suffix of length 1. This is the "first step after which prediction
+    stays constant to the end" definition, ignoring no-verdict steps.
     """
     if not traj.steps:
         return None
-    preds = [s.prediction for s in traj.steps]
-    # Walk backwards while predictions equal the final prediction.
-    i = len(preds) - 1
-    while i > 0 and preds[i - 1] == preds[-1]:
-        i -= 1
-    return i
+    # (original_index, prediction) for non-null steps only.
+    nn = [(i, s.prediction) for i, s in enumerate(traj.steps) if s.prediction is not None]
+    if not nn:
+        return None
+    final_val = nn[-1][1]
+    k = len(nn) - 1
+    while k > 0 and nn[k - 1][1] == final_val:
+        k -= 1
+    return nn[k][0]
 
 
 def verdict_convergence_step(traj: Trajectory) -> int | None:
@@ -65,26 +72,36 @@ def verdict_convergence_step(traj: Trajectory) -> int | None:
 
 
 def flip_rate(traj: Trajectory) -> float:
-    """Fraction of adjacent step pairs where the prediction changes.
+    """Fraction of adjacent non-null verdict pairs where prediction changes.
+
+    Null-aware: ``None`` means "no verdict yet" and is skipped.
+    A ``None -> "B"`` transition is NOT a flip. Flips are counted
+    only between two non-null, differing verdicts. Denominator is
+    ``len(non_null) - 1``.
 
     Range [0, 1]. 0.0 means the verdict never changed; 1.0 means it
-    changed at every adjacent pair. Empty or single-step trajectories
-    return 0.0.
+    changed at every adjacent non-null pair. Empty, single-step, or
+    all-null trajectories return 0.0.
     """
-    steps = traj.steps
-    if len(steps) < 2:
+    nn = [s.prediction for s in traj.steps if s.prediction is not None]
+    if len(nn) < 2:
         return 0.0
-    flips = sum(1 for a, b in zip(steps, steps[1:]) if a.prediction != b.prediction)
-    return flips / (len(steps) - 1)
+    flips = sum(1 for a, b in zip(nn, nn[1:]) if a != b)
+    return flips / (len(nn) - 1)
 
 
 def step_consistency(traj: Trajectory) -> dict[str, Any]:
     """Consistency summary: ``1 - flip_rate`` plus longest stable run.
 
+    Longest stable run is computed over the non-null verdict
+    sequence (nulls are skipped, not counted as breaks). Fraction
+    uses total ``len(steps)`` as denominator, so null steps still
+    count toward trajectory length, per the Dream adapter spec.
+
     Returns a dict with:
     * ``consistency``: 1 - flip_rate, in [0, 1].
     * ``longest_stable_run``: length of the longest run of identical
-      consecutive predictions (0 for empty, 1 for single step).
+      consecutive non-null predictions (0 for empty / all-null).
     * ``longest_stable_run_fraction``: longest run / n_steps.
     """
     steps = traj.steps
@@ -95,10 +112,17 @@ def step_consistency(traj: Trajectory) -> dict[str, Any]:
             "longest_stable_run_fraction": 0.0,
         }
     consistency = 1.0 - flip_rate(traj)
+    nn = [s.prediction for s in steps if s.prediction is not None]
+    if not nn:
+        return {
+            "consistency": consistency,
+            "longest_stable_run": 0,
+            "longest_stable_run_fraction": 0.0,
+        }
     best = 1
     cur = 1
-    for a, b in zip(steps, steps[1:]):
-        if a.prediction == b.prediction:
+    for a, b in zip(nn, nn[1:]):
+        if a == b:
             cur += 1
             best = max(best, cur)
         else:
@@ -176,7 +200,9 @@ def rationalization_score(traj: Trajectory) -> float:
     if n == 1:
         return 0.0
     conv_idx = _convergence_index(traj)
-    assert conv_idx is not None
+    if conv_idx is None:
+        # No verdict at all (all null): nothing to rationalize.
+        return 0.0
     early_factor = 1.0 - (conv_idx / n)
     post = steps[conv_idx + 1 :]
     if not post:
@@ -215,7 +241,8 @@ def early_convergence_fraction(
         if not t.steps:
             continue
         idx = _convergence_index(t)
-        assert idx is not None
+        if idx is None:
+            continue
         fracs.append(idx / len(t.steps))
     if not fracs:
         return 0.0

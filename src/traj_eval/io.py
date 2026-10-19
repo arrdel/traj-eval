@@ -26,8 +26,6 @@ from traj_eval.types import Trajectory, TrajectoryStep
 def _parse_step(raw: Any, traj_id: str, idx: int) -> TrajectoryStep:
     if not isinstance(raw, dict):
         raise ValueError(f"Trajectory {traj_id!r}: step {idx} is not an object: {raw!r}")
-    if "prediction" not in raw:
-        raise ValueError(f"Trajectory {traj_id!r}: step {idx} missing required 'prediction'")
     if "step" not in raw:
         raise ValueError(f"Trajectory {traj_id!r}: step {idx} missing required 'step'")
     try:
@@ -36,9 +34,14 @@ def _parse_step(raw: Any, traj_id: str, idx: int) -> TrajectoryStep:
         raise ValueError(
             f"Trajectory {traj_id!r}: step {idx} has non-integer 'step': {raw['step']!r}"
         ) from exc
+    # prediction may be None (no verdict yet, Dream adapter) or a string.
+    # Missing prediction is treated as None for adapter compatibility.
+    raw_pred = raw.get("prediction", None)
+    if raw_pred is not None:
+        raw_pred = str(raw_pred)
     return TrajectoryStep(
         step=step_no,
-        prediction=str(raw["prediction"]),
+        prediction=raw_pred,
         reasoning_text=str(raw.get("reasoning_text", "") or ""),
         confidence=raw.get("confidence"),
         logits=raw.get("logits"),
