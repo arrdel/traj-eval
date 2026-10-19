@@ -1,0 +1,51 @@
+{
+  "provenance": {
+    "package": "traj-eval",
+    "version": "0.1.0",
+    "command": "python -m traj_eval demo --n-per-archetype 5",
+    "seed": 42,
+    "data": "examples/synthetic_demo.jsonl",
+    "note": "Hand-built trajectories. Every final answer is correct by construction. Not a model baseline."
+  },
+  "aggregate": {
+    "n_trajectories": 15,
+    "n_scored_for_accuracy": 15,
+    "accuracy": 1.0,
+    "mean_flip_rate": 0.4286,
+    "mean_rationalization_score": 0.4569,
+    "early_convergence_fraction": 0.3333,
+    "mean_convergence_step": 3.6667,
+    "median_convergence_step": 4.0,
+    "mean_convergence_fraction": 0.4583,
+    "median_convergence_fraction": 0.5
+  },
+  "by_archetype": {
+    "genuine": {
+      "n_trajectories": 5,
+      "accuracy": 1.0,
+      "mean_flip_rate": 0.2857,
+      "mean_rationalization_score": 0.3333,
+      "early_convergence_fraction": 0.0,
+      "mean_convergence_step": 4.0,
+      "mean_convergence_fraction": 0.5
+    },
+    "rationalization": {
+      "n_trajectories": 5,
+      "accuracy": 1.0,
+      "mean_flip_rate": 0.0,
+      "mean_rationalization_score": 1.0,
+      "early_convergence_fraction": 1.0,
+      "mean_convergence_step": 0.0,
+      "mean_convergence_fraction": 0.0
+    },
+    "oscillation": {
+      "n_trajectories": 5,
+      "accuracy": 1.0,
+      "mean_flip_rate": 1.0,
+      "mean_rationalization_score": 0.0375,
+      "early_convergence_fraction": 0.0,
+      "mean_convergence_step": 7.0,
+      "mean_convergence_fraction": 0.875
+    }
+  }
+}

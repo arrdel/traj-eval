@@ -149,6 +149,12 @@ python -m traj_eval demo
 python -m traj_eval run --input examples/synthetic_demo.jsonl
 ```
 
+## Paper and baselines
+
+The ICML/NeurIPS outline is `docs/paper_outline.md`. It states what v0.1 measures, what Yeom et al. (2026) and Kim and Choi (2026) already measured, and which claims are still unrun.
+
+`results/baselines.md` records the synthetic split (accuracy 1.0 on every archetype) and the three text checkpoints chosen for the first real suite. Those checkpoints have not been run. A draft of the visibility thread is `docs/x_thread.md`.
+
 ## Citation
 
 If you use `traj-eval` in research, please cite it as:
