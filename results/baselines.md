@@ -25,9 +25,9 @@ Chosen 17 Oct 2026. Text trio first, because Yeom et al. (arXiv:2608.05687) alre
 
 | Checkpoint | Hugging Face id | Status |
 |---|---|---|
-| LLaDA-8B-Instruct | `GSAI-ML/LLaDA-8B-Instruct` | Adapter ready (`src/traj_eval/adapters/llada.py`). GPU run pending. |
-| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | Adapter ready (`src/traj_eval/adapters/llada.py`). GPU run pending. |
-| Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct smoke clean (2026-10-29) + 5-item canonical reasoning smoke clean (2026-10-30). |
+| LLaDA-8B-Instruct | `GSAI-ML/LLaDA-8B-Instruct` | Adapter ready (`src/traj_eval/adapters/llada.py`). 5-item & 64-item ARC-C suites completed on `ai-lab2` (next PR). |
+| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | Adapter ready (`src/traj_eval/adapters/llada.py`). 5-item & 64-item ARC-C suites completed on `ai-lab2` (next PR). |
+| Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct & reasoning smokes clean + 64-item paired direct & canonical reasoning suites completed (2026-10-30). |
 | MMaDA-8B-MixCoT (holdout) | `Gen-Verse/MMaDA-8B-MixCoT` | Not in the first suite. |
 
 Why nothing was launched: all eight RTX A6000s on this machine were in use (about 43 GB of 49 GB, utilization 100%). The default PyTorch in the base environment is `2.11.0+cu130` and does not see the driver. A later run should use a CUDA 12.1 build, one GPU that is actually free, and a sampler config written down before the job starts.
@@ -268,3 +268,96 @@ MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
 | `length_growth` | 0.0000 | 0.0299 | +0.0299 |
 | `score` | 0.3950 | 0.2068 | -0.1882 |
 | `gated_score` | 0.0000 | 0.0166 | +0.0166 |
+
+## Dream-v0-Instruct-7B — ARC-C 64-item paired direct vs. canonical reasoning suites (Stage 2)
+
+- **Date (UTC):** 2026-10-30
+- **Job IDs:** `dream_arcc_smoke64_direct` (GPU 0) and `dream_arcc_smoke64_reasoning` (GPU 1)
+- **Git revision (`git rev-parse HEAD` at run):** `0870b06e2d055dfde520c6e5a5be690535e52fab`
+- **Host & Environment:** `ai-lab2.dyn.gsu.edu` (`.venv-gpu`: `Python 3.12.2`, `torch 2.6.0+cu124`, `transformers 4.46.2`)
+- **GPUs:** `CUDA_VISIBLE_DEVICES=0` (`direct_64`) and `CUDA_VISIBLE_DEVICES=1` (`reasoning_64`), `NVIDIA GeForce RTX 4090` (`24210 MiB` free / `2 MiB` used / `0%` util at launch)
+- **`nvidia-smi` at launch (`ai-lab2`):**
+  ```
+  index, name, memory.used [MiB], memory.free [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24210 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24210 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24210 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24210 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config (identical across both conditions):** `model_family=dream, temperature=0.2, top_p=0.95, alg=entropy, alg_temp=0.0, steps=256, max_new_tokens=256, force_deliberation_steps=0, frontier_width=None`
+- **Artifacts:**
+  - Fixed IDs: `results/arcc_smoke64_ids.json` (`n = 64`)
+  - Direct condition: `results/arcc_smoke64_direct_input.json` -> `results/dream_arcc_smoke64_direct.jsonl`, `results/dream_arcc_smoke64_direct_run_log.json`, `results/dream_arcc_smoke64_direct_results.json`
+  - Canonical reasoning condition: `results/arcc_smoke64_reasoning_input.json` -> `results/dream_arcc_smoke64_reasoning.jsonl`, `results/dream_arcc_smoke64_reasoning_run_log.json`, `results/dream_arcc_smoke64_reasoning_results.json`
+  - Side-by-side comparison JSON: `results/dream_arcc_smoke64_direct_vs_reasoning.json`
+- **Undecided count:**
+  - `direct_64`: **0 undecided** (64 / 64 non-null at final step).
+  - `reasoning_64`: **0 undecided** (64 / 64 non-null at final step).
+
+### Pasted aggregate JSON — `direct_64` (`results/dream_arcc_smoke64_direct_results.json`)
+
+```json
+{
+  "n_trajectories": 64,
+  "n_scored_for_accuracy": 64,
+  "accuracy": 0.8906,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.8906,
+  "mean_flip_rate": 0.0,
+  "mean_rationalization_score": 0.3948,
+  "mean_gated_rationalization_score": 0.0012,
+  "mean_early_factor": 0.9852,
+  "mean_post_change_rate": 0.0001,
+  "mean_length_growth": 0.0035,
+  "early_convergence_fraction": 1.0,
+  "disagreement_rate": 0.0312,
+  "sbw_lockin_rate": 0.1094,
+  "mean_convergence_step": 3.7969,
+  "median_convergence_step": 3.0,
+  "mean_convergence_fraction": 0.0148,
+  "median_convergence_fraction": 0.0117,
+  "mean_answer_commitment_step": 3.7969,
+  "mean_stability_commitment_lag": 0.0,
+  "mean_unwritten_reasoning_at_convergence": 0.0,
+  "mean_order_gap": 0.0109
+}
+```
+
+### Pasted aggregate JSON — `reasoning_64` (`results/dream_arcc_smoke64_reasoning_results.json`)
+
+```json
+{
+  "n_trajectories": 64,
+  "n_scored_for_accuracy": 64,
+  "accuracy": 0.8125,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.8125,
+  "mean_flip_rate": 0.0169,
+  "mean_rationalization_score": 0.2826,
+  "mean_gated_rationalization_score": 0.0718,
+  "mean_early_factor": 0.3244,
+  "mean_post_change_rate": 0.319,
+  "mean_length_growth": 0.1264,
+  "early_convergence_fraction": 0.0781,
+  "disagreement_rate": 0.7656,
+  "sbw_lockin_rate": 0.0156,
+  "mean_convergence_step": 172.9531,
+  "median_convergence_step": 185.5,
+  "mean_convergence_fraction": 0.6756,
+  "median_convergence_fraction": 0.7246,
+  "mean_answer_commitment_step": 191.4531,
+  "mean_stability_commitment_lag": 18.5,
+  "mean_unwritten_reasoning_at_convergence": 0.081,
+  "mean_order_gap": 0.3745
+}
+```
+
+### Side-by-side rationalization components (`direct_64` vs `reasoning_64`)
+
+| Component | `direct_64` (`n=64`) | `reasoning_64` (`n=64`) | Delta (`reasoning_64 - direct_64`) |
+|---|---:|---:|---:|
+| `early_factor` | 0.9852 | 0.3244 | -0.6608 |
+| `post_change_rate` | 0.0001 | 0.3190 | +0.3189 |
+| `length_growth` | 0.0035 | 0.1264 | +0.1229 |
+| `score` | 0.3948 | 0.2826 | -0.1122 |
+| `gated_score` | 0.0012 | 0.0718 | +0.0706 |
