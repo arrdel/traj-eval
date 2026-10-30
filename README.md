@@ -81,10 +81,18 @@ Malformed files raise `ValueError` with a clear message instead of silently drop
 | Trajectory accuracy | `trajectory_accuracy` | [0, 1] | Fraction where final prediction == gold. Skips empty / unknown-gold trajectories. |
 | Forced deliberation delta | `forced_deliberation_delta` | dict | Given `base_accuracy` and `forced_accuracy`, returns `delta = forced - base` and `relative_drop = (base - forced) / base`. Negative delta means forcing longer deliberation hurt accuracy. |
 | Rationalization score | `rationalization_score` | [0, 1] | **Heuristic.** High when verdict converges early AND reasoning keeps changing/lengthening after convergence. Formula: `0.4*early_factor + 0.4*post_change_rate + 0.2*length_growth`. Not ground truth. |
-| Rationalization components | `rationalization_components` | dict | **Heuristic decomposition.** Returns `early_factor`, `post_change_rate`, `length_growth`, and `score` so direct-answer runs (`post_change_rate == 0`) are distinguishable from post-verdict elaboration. |
+| Rationalization components | `rationalization_components` | dict | **Heuristic decomposition.** Returns `early_factor`, `post_change_rate`, `length_growth`, `score`, and `gated_score` so direct-answer runs (`post_change_rate == 0`) are distinguishable from post-verdict elaboration. |
+| Gated rationalization score | `gated_rationalization_score` | [0, 1] | Multiplicative-gated heuristic `early_factor * ((0.4*post_change_rate + 0.2*length_growth) / 0.6)`. Returns `0.0` when no post-convergence rationale edits or length growth occur. |
 | Answer commitment step | `answer_commitment_step` | step number or None | First step after which `answer_committed` stays True to the end (`T_commit`). None if not logged or never committed. |
 | Stability–commitment lag | `stability_commitment_lag` | int or None | `T_commit - T_stab` in steps (`answer_commitment_step - verdict_convergence_step`). None if either is undefined. |
 | Unwritten reasoning at convergence | `unwritten_reasoning_at_convergence` | [0, 1] or None | `1 - committed_reasoning_fraction` at the verdict convergence step (`T_stab`). None if not logged. |
+| Commitment order gap | `order_gap` | [-1, 1] or None | `(T_commit(ans) - T_median_commit(reason)) / n` (Yeom et al. 2026). Negative values indicate answer-first commitment. |
+| Three-clock disagreement | `three_clock_disagreement` | dict | Flags trajectories where verdict stability (`T_stab`), answer commitment (`T_commit`), and rationale completion/edits disagree (`in_disagreement_slice`). |
+| Stable-but-wrong lock-in | `is_sbw_lockin` | bool or None | True when a trajectory converges within the first 20% of steps (`threshold` configurable) to an incorrect final answer (Zhao et al., LOCKR 2026). |
+| Coverage–accuracy decomposition | `coverage_accuracy_decomposition` | dict | Symmetric Two-Clocks decomposition of accuracy delta into `coverage_effect` vs. `conditional_accuracy_effect` (Kim & Choi 2026). |
+| CoTsel selection gap | `cotsel_selection_gap`, `stratified_evaluation` | dict | Correctness-conditioning selection gap `Cov(M, C) / P(C=1)` (Pan & Pan 2026) and stratified summaries across `all`, `correct`, `incorrect`, and `undecided`. |
+| Paired bootstrap delta | `paired_bootstrap_delta` | dict | Paired bootstrap confidence interval for `target - base` over matched question IDs (Yeom et al. 2026). |
+| Pass@k & diversity | `pass_at_k_metrics` | dict | Unbiased `Pass@k` estimator and unique answer/rationale ratios across multiple rollouts per prompt (Ni et al. 2026). |
 | Early convergence fraction | `early_convergence_fraction` | [0, 1] | Fraction of trajectories converging within the first 20% of steps (threshold configurable). |
 | Aggregate | `evaluate_trajectories` | dict | Per-trajectory results + aggregate: accuracy, mean/median convergence step and fraction, mean flip rate, mean rationalization score, early convergence fraction. |
 

@@ -4,14 +4,23 @@ import pytest
 
 from traj_eval.metrics import (
     answer_commitment_step,
+    cotsel_selection_gap,
+    coverage_accuracy_decomposition,
     early_convergence_fraction,
     evaluate_trajectories,
     flip_rate,
     forced_deliberation_delta,
+    gated_rationalization_score,
+    is_sbw_lockin,
+    order_gap,
+    paired_bootstrap_delta,
+    pass_at_k_metrics,
     rationalization_components,
     rationalization_score,
     stability_commitment_lag,
     step_consistency,
+    stratified_evaluation,
+    three_clock_disagreement,
     trajectory_accuracy,
     unwritten_reasoning_at_convergence,
     verdict_convergence_step,
@@ -233,3 +242,148 @@ def test_commitment_clocks_and_unwritten_fraction():
     assert out["aggregate"]["mean_answer_commitment_step"] == pytest.approx(2.0)
     assert out["aggregate"]["mean_stability_commitment_lag"] == pytest.approx(1.0)
     assert out["aggregate"]["mean_unwritten_reasoning_at_convergence"] == pytest.approx(0.75)
+    # Answer commits at index 2; median reasoning (>=0.5) commits at index 2 -> order_gap = 0.0
+    assert order_gap(t) == pytest.approx(0.0)
+    assert three_clock_disagreement(t)["in_disagreement_slice"] is True
+
+
+def test_gated_rationalization_zero_on_eos_padded_direct_answer():
+    # Direct answer at step 0 with 255 EOS-padded identical steps:
+    # additive v0.1 score is ~0.40, whereas gated_score is exact 0.0.
+    direct = _traj(["C"] * 10, gold="C", reasoning=["Answer: C"] * 10)
+    comp = rationalization_components(direct)
+    assert comp["score"] == pytest.approx(0.4)
+    assert comp["gated_score"] == 0.0
+    assert gated_rationalization_score(direct) == 0.0
+
+    # Full early rationalization with continuous post-verdict elaboration hits 1.0 on both.
+    elab = _traj(
+        ["C"] * 4,
+        gold="C",
+        reasoning=["C", "C because x", "C because x and y", "C because x and y and z"],
+    )
+    assert gated_rationalization_score(elab) == pytest.approx(1.0)
+
+
+def test_rationalization_converges_at_last_step_uses_0_4_weight():
+    # Converges at step 3 of 4 (conv_idx=3, n=4): early_factor = 0.25, no post steps.
+    # Must use 0.4 * early_factor = 0.10 (consistent with post_change_rate=0, length_growth=0).
+    t = _traj(["A", "B", "A", "C"], gold="C")
+    comp = rationalization_components(t)
+    assert comp["early_factor"] == pytest.approx(0.25)
+    assert comp["post_change_rate"] == 0.0
+    assert comp["length_growth"] == 0.0
+    assert comp["score"] == pytest.approx(0.1)
+    assert comp["gated_score"] == 0.0
+
+
+def test_order_gap_answer_first_negative():
+    # Answer commits at step 1, while median reasoning (>=0.5) commits at step 3 (4 steps total).
+    steps = [
+        TrajectoryStep(step=0, prediction=None, answer_committed=False, committed_reasoning_fraction=0.0),
+        TrajectoryStep(step=1, prediction="B", answer_committed=True, committed_reasoning_fraction=0.2),
+        TrajectoryStep(step=2, prediction="B", answer_committed=True, committed_reasoning_fraction=0.4),
+        TrajectoryStep(step=3, prediction="B", answer_committed=True, committed_reasoning_fraction=1.0),
+    ]
+    t = Trajectory(id="af", prompt="q", gold_answer="B", steps=steps)
+    # (1 - 3) / 4 = -0.5 < 0 (answer-first)
+    assert order_gap(t) == pytest.approx(-0.5)
+
+
+def test_sbw_lockin_separates_benign_from_wrong_early_convergence():
+    # Converges at step 0 of 10 (conv_frac = 0.0 <= 0.2), wrong answer -> SBW lock-in True.
+    wrong_early = _traj(["A"] * 10, gold="B", tid="sbw")
+    # Converges at step 0 of 10, right answer -> Benign lock-in (SBW False).
+    right_early = _traj(["B"] * 10, gold="B", tid="benign")
+    # Converges at step 8 of 10 (conv_frac = 0.8 > 0.2), wrong answer -> Not early lock-in.
+    wrong_late = _traj(["B"] * 8 + ["A", "A"], gold="B", tid="late")
+
+    assert is_sbw_lockin(wrong_early) is True
+    assert is_sbw_lockin(right_early) is False
+    assert is_sbw_lockin(wrong_late) is False
+
+
+def test_coverage_accuracy_decomposition_exact_identity():
+    # Base: 4 items, 2 decided (both correct) -> coverage=0.5, cond_acc=1.0, acc=0.5.
+    base = [
+        _traj(["B", "B"], gold="B", tid="1"),
+        _traj(["C", "C"], gold="C", tid="2"),
+        _traj([None, None], gold="A", tid="3"),
+        _traj([None, None], gold="D", tid="4"),
+    ]
+    # Target: 4 items, 4 decided (3 correct) -> coverage=1.0, cond_acc=0.75, acc=0.75.
+    target = [
+        _traj(["B", "B"], gold="B", tid="1"),
+        _traj(["C", "C"], gold="C", tid="2"),
+        _traj(["A", "A"], gold="A", tid="3"),
+        _traj(["A", "A"], gold="D", tid="4"),
+    ]
+    decomp = coverage_accuracy_decomposition(base, target)
+    assert decomp["base_coverage"] == pytest.approx(0.5)
+    assert decomp["target_coverage"] == pytest.approx(1.0)
+    assert decomp["base_conditional_accuracy"] == pytest.approx(1.0)
+    assert decomp["target_conditional_accuracy"] == pytest.approx(0.75)
+    assert decomp["delta_accuracy"] == pytest.approx(0.25)
+    # Exact identity: coverage_effect + conditional_accuracy_effect == delta_accuracy.
+    assert decomp["coverage_effect"] + decomp["conditional_accuracy_effect"] == pytest.approx(
+        decomp["delta_accuracy"]
+    )
+    assert decomp["coverage_effect"] > abs(decomp["conditional_accuracy_effect"])
+
+
+def test_cotsel_selection_gap_and_stratified_evaluation():
+    # Correct trajectory has high gated rationalization (1.0), incorrect has 0.0.
+    t_corr = _traj(
+        ["B"] * 4,
+        gold="B",
+        reasoning=["B", "B x", "B x y", "B x y z"],
+        tid="c",
+    )
+    t_incorr = _traj(
+        ["A"] * 4,
+        gold="B",
+        reasoning=["Answer: A"] * 4,
+        tid="i",
+    )
+    gap = cotsel_selection_gap([t_corr, t_incorr], gated_rationalization_score)
+    assert gap["all_mean"] == pytest.approx(0.5)
+    assert gap["correct_mean"] == pytest.approx(1.0)
+    assert gap["incorrect_mean"] == pytest.approx(0.0)
+    assert gap["selection_gap"] == pytest.approx(0.5)
+
+    strat = stratified_evaluation([t_corr, t_incorr])
+    assert strat["correct"]["n"] == 1
+    assert strat["incorrect"]["n"] == 1
+    assert strat["cotsel_gaps"]["gated_rationalization_score"]["selection_gap"] == pytest.approx(0.5)
+
+
+def test_paired_bootstrap_delta_and_pass_at_k():
+    base = [
+        _traj(["A"], gold="B", tid="q1"),
+        _traj(["B"], gold="B", tid="q2"),
+        _traj(["A"], gold="B", tid="q3"),
+        _traj(["B"], gold="B", tid="q4"),
+    ]
+    target = [
+        _traj(["B"], gold="B", tid="q1"),
+        _traj(["B"], gold="B", tid="q2"),
+        _traj(["B"], gold="B", tid="q3"),
+        _traj(["B"], gold="B", tid="q4"),
+    ]
+    boot = paired_bootstrap_delta(base, target, metric="accuracy", n_boot=200, seed=0)
+    assert boot["n_paired"] == 4
+    assert boot["delta"] == pytest.approx(0.5)
+    assert boot["ci_low"] <= boot["delta"] <= boot["ci_high"]
+
+    # Pass@k across 2 prompts, 4 rollouts each.
+    rollouts = [
+        Trajectory(id="p1#0", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="B", reasoning_text="r1")]),
+        Trajectory(id="p1#1", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="A", reasoning_text="r2")]),
+        Trajectory(id="p1#2", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="C", reasoning_text="r3")]),
+        Trajectory(id="p1#3", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="D", reasoning_text="r4")]),
+    ]
+    pk = pass_at_k_metrics(rollouts, ks=(1, 2, 4))
+    assert pk["n_prompts"] == 1
+    assert pk["pass_at_k"]["pass@1"] == pytest.approx(0.25)
+    assert pk["pass_at_k"]["pass@4"] == pytest.approx(1.0)
+    assert pk["mean_unique_answer_ratio"] == pytest.approx(1.0)
