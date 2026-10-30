@@ -36,14 +36,20 @@ null-aware (see ``traj_eval.metrics``):
 Do NOT change this rule in the adapter without updating the metrics
 docstring, the tests, and the run log.
 
-What this file does NOT do
--------------------------
-- No token-commitment logging (Yeom et al. style ``answer_committed``).
-  History gives us what we need to add it later; first run is
-  parsed-verdict only.
-- No LLaDA / MMaDA adapters.
-- No forced deliberation.
-- No GSM8K numeric extraction. Do NOT reuse the A-D regex for GSM8K.
+What this file provides
+-----------------------
+- ARC-C verdict extraction (:func:`extract_verdict`) and GSM8K numeric
+  extraction (:func:`extract_gsm8k_verdict`, :func:`strip_gsm8k_exemplars`,
+  :func:`normalize_numeric_answer`). Never reuse the A-D regex for GSM8K.
+- Per-step token-commitment tracking (:func:`compute_step_commitments`)
+  populating ``TrajectoryStep.answer_committed`` and
+  ``TrajectoryStep.committed_reasoning_fraction`` inside
+  :func:`history_to_trajectory`.
+- Optional forced-deliberation EOS suppression (``force_deliberation_steps``)
+  and frontier gating (``frontier_width``) via Dream's
+  ``generation_logits_hook_func``.
+- LLaDA checkpoints live in ``src/traj_eval/adapters/llada.py``; MMaDA is
+  not in this module.
 
 Env: run from the ``cdr-gpu`` conda env (torch 2.5.1+cu121,
 transformers 4.46.2), NOT base (torch 2.11 + transformers 5.5, CUDA
@@ -66,11 +72,19 @@ DREAM_MODEL_ID = "Dream-org/Dream-v0-Instruct-7B"
 # Answer-prefix patterns take precedence over a bare standalone letter.
 # We return the LAST match: the most recent explicit answer statement.
 _ANSWER_PREFIX_RES = [
+    re.compile(r"\\boxed\{\s*\(?\s*([A-D])\s*\)?\s*\}", re.IGNORECASE),
+    re.compile(r"final\s+answer\s*(?:is\s*)?[:\s]*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
     re.compile(r"answer\s+is\s*[:\s]*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
-    re.compile(r"final\s+answer\s*[:\s]*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
+    re.compile(r"\banswer\s*:\s*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
     re.compile(r"option\s*[:\s]*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
     re.compile(r"choice\s+is\s*[:\s]*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
 ]
+# Clause-initial English indefinite article "A <lowercase_word>" (excluding
+# linking verbs like "A is/was/fits/matches") so partial CoT sentences such
+# as "A planet rotates faster..." do not emit a false "A" verdict.
+_ARTICLE_A_RE = re.compile(
+    r"(^|[.!?]\s+|\n\s*)A\s+(?!(?:is|was|fits|matches|means|equals)\b)([a-z]{2,}\b)"
+)
 _STANDALONE_LETTER_RE = re.compile(r"\b([A-D])\b")
 
 
@@ -80,17 +94,12 @@ def extract_verdict(text: str) -> str | None:
     Returns ``"A"``..``"D"`` or ``None`` when no letter is decodable.
     Never guesses.
 
-    Precedence: answer-prefix patterns (``answer is (B)``, ``final
-    answer: C``, ``option B``) win over a bare standalone letter, and
-    the last such match wins. Otherwise the last standalone
-    ``\\b([A-D])\\b`` match wins. ``None`` for empty / all-mask text.
-
-    Limitation: a bare ``"A"`` as an English article can match the
-    standalone pattern. In ARC-C smoke this is acceptable because the
-    eval prompt asks for a letter and answer-prefix matches take
-    precedence. If this becomes a problem, tighten to require the
-    letter on its own line or after "Answer:" in the prompt design,
-    do not silently guess.
+    Precedence: answer-prefix patterns (``\\boxed{B}``, ``final answer: C``,
+    ``answer is (B)``, ``Answer: A``, ``option B``) win over a bare
+    standalone letter, and the last such match wins. Otherwise the last
+    standalone ``\\b([A-D])\\b`` match wins after stripping clause-initial
+    English indefinite articles (``"A planet..."``). ``None`` for empty /
+    all-mask text.
     """
     if not text or not text.strip():
         return None
@@ -99,7 +108,8 @@ def extract_verdict(text: str) -> str | None:
         if matches:
             # findall returns the captured group; last wins.
             return str(matches[-1]).upper()
-    matches = _STANDALONE_LETTER_RE.findall(text)
+    scrubbed = _ARTICLE_A_RE.sub(r"\1\2", text)
+    matches = _STANDALONE_LETTER_RE.findall(scrubbed)
     if matches:
         return str(matches[-1]).upper()
     return None
@@ -335,10 +345,20 @@ def compute_step_commitments(
 
     target = final_verdict.strip().upper()
     ans_pos: int | None = None
-    for j in reversed(content_pos):
-        if target and target in pieces[j].upper():
-            ans_pos = j
-            break
+    # Pass 1: exact match after stripping whitespace and punctuation, scanning from end.
+    if target:
+        for j in reversed(content_pos):
+            cleaned_piece = re.sub(r"[\s()\[\]{}:.,;\"'`$]+", "", pieces[j]).upper()
+            if cleaned_piece == target:
+                ans_pos = j
+                break
+    # Pass 2: fallback substring match if no exact token match exists.
+    if ans_pos is None and target:
+        for j in reversed(content_pos):
+            if target in pieces[j].upper():
+                ans_pos = j
+                break
+    # Pass 3: fallback to last content token.
     if ans_pos is None:
         ans_pos = content_pos[-1]
 
@@ -424,6 +444,10 @@ class DreamSmokeConfig:
     # When > 0, suppresses EOS token logits for the first K denoising steps
     # via Dream's generation_logits_hook_func (forced deliberation).
     force_deliberation_steps: int = 0
+    # When set (e.g. w=16, Yeom et al. 2026), restricts eligible commitments at
+    # step t to positions i < f(t) + frontier_width where f(t) is the left-most
+    # masked position in the generation canvas.
+    frontier_width: int | None = None
     # Output locations (relative to repo root unless absolute).
     n_items: int = 5
     out_jsonl: str = "results/dream_arcc_smoke5.jsonl"
@@ -443,6 +467,7 @@ class DreamSmokeConfig:
             "alg": self.alg,
             "alg_temp": self.alg_temp,
             "force_deliberation_steps": self.force_deliberation_steps,
+            "frontier_width": self.frontier_width,
             "n_items": self.n_items,
             "out_jsonl": self.out_jsonl,
             "out_ids": self.out_ids,
@@ -553,18 +578,40 @@ def run_dream_arcc_smoke(
         mask_id = int(getattr(tokenizer, "mask_token_id", 0) or 0)
 
         gen_kwargs: dict[str, Any] = {}
-        if cfg.force_deliberation_steps > 0:
+        if cfg.force_deliberation_steps > 0 or (
+            cfg.frontier_width is not None and cfg.frontier_width > 0
+        ):
             eos_id = getattr(tokenizer, "eos_token_id", None)
             pad_id = getattr(tokenizer, "pad_token_id", None)
             suppress_ids = [i for i in (eos_id, pad_id) if isinstance(i, int)]
+            f_width = cfg.frontier_width
 
-            def _force_delib_logits_hook(step_idx: Any, x: Any, logits: Any) -> Any:
-                if step_idx is not None and int(step_idx) < cfg.force_deliberation_steps:
+            def _intervention_logits_hook(step_idx: Any, x: Any, logits: Any) -> Any:
+                if (
+                    cfg.force_deliberation_steps > 0
+                    and step_idx is not None
+                    and int(step_idx) < cfg.force_deliberation_steps
+                ):
                     for sid in suppress_ids:
                         logits[..., sid] = float("-inf")
+                if f_width is not None and f_width > 0 and hasattr(x, "shape"):
+                    # Frontier gating (Yeom et al. 2026): flatten logits outside
+                    # [f(t), f(t) + w) to 0.0 (uniform distribution -> minimum
+                    # confidence under entropy/maskgit_plus/topk_margin) so only
+                    # positions within w of the left-most mask f(t) are selected.
+                    for r in range(x.shape[0]):
+                        row_tokens = _as_int_list(x[r])
+                        masked_cols = [
+                            c for c in range(prompt_len, len(row_tokens)) if row_tokens[c] == mask_id
+                        ]
+                        if masked_cols:
+                            f_t = masked_cols[0]
+                            cutoff = f_t + f_width
+                            if cutoff < len(row_tokens):
+                                logits[r, cutoff:, :] = 0.0
                 return logits
 
-            gen_kwargs["generation_logits_hook_func"] = _force_delib_logits_hook
+            gen_kwargs["generation_logits_hook_func"] = _intervention_logits_hook
 
         output = model.diffusion_generate(
             input_ids,

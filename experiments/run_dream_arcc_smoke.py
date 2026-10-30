@@ -132,6 +132,12 @@ def main(argv=None) -> int:
     )
     ap.add_argument("--task", choices=["arcc", "gsm8k"], default="arcc")
     ap.add_argument("--force-deliberation-steps", type=int, default=0)
+    ap.add_argument(
+        "--frontier-width",
+        type=int,
+        default=None,
+        help="Frontier gating window width w (Yeom et al. 2026); None = unrestricted",
+    )
     args = ap.parse_args(argv)
 
     if args.fake:
@@ -166,6 +172,7 @@ def main(argv=None) -> int:
             steps=args.steps,
             block_length=args.block_length,
             temperature=args.temperature,
+            frontier_width=args.frontier_width,
             n_items=len(items),
             out_jsonl=args.out_jsonl,
             out_ids=args.out_ids,
@@ -182,6 +189,7 @@ def main(argv=None) -> int:
             steps=args.steps,
             max_new_tokens=args.max_new_tokens,
             force_deliberation_steps=args.force_deliberation_steps,
+            frontier_width=args.frontier_width,
             n_items=len(items),
             out_jsonl=args.out_jsonl,
             out_ids=args.out_ids,

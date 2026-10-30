@@ -133,3 +133,9 @@ def test_run_llada_smoke_with_stub_models(tmp_path: Path):
         assert loaded[0].steps[1].answer_committed is True
         assert loaded[0].steps[1].committed_reasoning_fraction == 0.0
         assert loaded[0].steps[3].committed_reasoning_fraction == 1.0
+
+
+def test_llada_config_serializes_frontier_width():
+    cfg = LLaDASmokeConfig(frontier_width=16)
+    d = cfg.to_dict()
+    assert d["frontier_width"] == 16

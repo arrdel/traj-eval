@@ -43,6 +43,13 @@ def test_extract_verdict_prefix_precedence():
     # Bare "A" as article should NOT beat an explicit answer prefix.
     assert extract_verdict("A long rationale. The answer is (B)") == "B"
     assert extract_verdict("Answer is A. Then B appears later as a letter") == "A"
+    assert extract_verdict("Answer: A. Because B is too slow.") == "A"
+    assert extract_verdict("Therefore \\boxed{D} is right, not B.") == "D"
+    # Clause-initial English article "A <noun>" in unfinished CoT must NOT emit "A".
+    assert extract_verdict("A planet rotates faster after a meteorite impact.") is None
+    assert extract_verdict("First step. A physicist conducts three trials.") is None
+    # Linking verb "A is ..." still counts as option letter A.
+    assert extract_verdict("A is the correct option.") == "A"
 
 
 def test_decode_strips_masks_and_prompt():
@@ -215,3 +222,40 @@ def test_gsm8k_exemplar_stripping():
     )
     assert strip_gsm8k_exemplars(with_trailing_turn) == "She sells 9 * 2 = 18 dollars. #### 18"
     assert extract_gsm8k_verdict(with_trailing_turn) == "18"
+
+
+def test_commitment_exact_match_ignores_trailing_substring_rationale():
+    # Token 31 is the exact answer letter "C" (committed at step 1).
+    # Token 40 is trailing rationale " because it cools" (which contains 'c'/'C' as a substring,
+    # committed later at step 2). Exact-match pass must pin ans_pos on token 31 (step 1),
+    # not on token 40 (step 2).
+    tok = FakeTokenizer(
+        {
+            10: "P",
+            20: "Step 1. ",
+            30: "Answer: ",
+            31: "C",
+            40: " because it cools.",
+            999: "",
+        }
+    )
+    history = [
+        [10, 999, 999, 999, 999],
+        [10, 999, 30, 31, 999],
+        [10, 20, 30, 31, 40],
+    ]
+    traj = history_to_trajectory(
+        traj_id="sub1",
+        prompt="Q?",
+        gold_answer="C",
+        history=history,
+        tokenizer=tok,
+        prompt_len=1,
+        mask_token_id=999,
+    )
+    assert [s.prediction for s in traj.steps] == [None, "C", "C"]
+    # Answer token 31 committed at step 1, even though trailing token 40 (" because...") committed at step 2.
+    assert [s.answer_committed for s in traj.steps] == [False, True, True]
+    # Rationale before ans_pos (pos 2 -> token 31) is pos 0 (tok 20) and pos 1 (tok 30):
+    # at step 1, tok 30 is committed and tok 20 is masked -> 1/2 = 0.5.
+    assert [s.committed_reasoning_fraction for s in traj.steps] == [0.0, 0.5, 1.0]

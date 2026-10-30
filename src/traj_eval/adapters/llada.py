@@ -81,6 +81,10 @@ class LLaDASmokeConfig:
     mask_id: int = LLADA_MASK_TOKEN_ID
     logits_eos_inf: bool = False
     confidence_eos_eot_inf: bool = True
+    # When set (e.g. w=16, Yeom et al. 2026), restricts eligible commitments at
+    # step t to positions i < f(t) + frontier_width where f(t) is the left-most
+    # masked position in the generation canvas.
+    frontier_width: int | None = None
     n_items: int = 5
     out_jsonl: str = "results/llada_arcc_smoke5.jsonl"
     out_ids: str = "results/llada_arcc_smoke5_ids.json"
@@ -100,6 +104,7 @@ class LLaDASmokeConfig:
             "mask_id": self.mask_id,
             "logits_eos_inf": self.logits_eos_inf,
             "confidence_eos_eot_inf": self.confidence_eos_eot_inf,
+            "frontier_width": self.frontier_width,
             "n_items": self.n_items,
             "out_jsonl": self.out_jsonl,
             "out_ids": self.out_ids,
@@ -122,6 +127,7 @@ def llada_diffusion_generate(
     mask_id: int = LLADA_MASK_TOKEN_ID,
     logits_eos_inf: bool = False,
     confidence_eos_eot_inf: bool = True,
+    frontier_width: int | None = None,
 ) -> tuple[Any, list[Any]]:
     """Run LLaDA blockwise masked diffusion decoding and record full step history.
 
@@ -138,6 +144,7 @@ def llada_diffusion_generate(
             max_new_tokens=gen_length,
             steps=steps,
             mask_id=mask_id,
+            frontier_width=frontier_width,
         )
         return getattr(out, "sequences", None), list(getattr(out, "history", []))
 
@@ -210,6 +217,13 @@ def llada_diffusion_generate(
                 # Restrict unmasking to the active block.
                 x0_p[:, :block_start] = -torch.inf
                 x0_p[:, block_end:] = -torch.inf
+                if frontier_width is not None and frontier_width > 0:
+                    for row in range(x.shape[0]):
+                        masked_cols = torch.nonzero(mask_index[row, block_start:block_end], as_tuple=False)
+                        if masked_cols.numel() > 0:
+                            f_t = block_start + int(masked_cols[0].item())
+                            cutoff = min(block_end, f_t + frontier_width)
+                            x0_p[row, cutoff:block_end] = -torch.inf
                 x0 = torch.where(mask_index, x0, x)
                 confidence = torch.where(mask_index, x0_p, torch.full_like(x0_p, -torch.inf))
 
@@ -330,6 +344,7 @@ def run_llada_smoke(
             mask_id=cfg.mask_id,
             logits_eos_inf=cfg.logits_eos_inf,
             confidence_eos_eot_inf=cfg.confidence_eos_eot_inf,
+            frontier_width=cfg.frontier_width,
         )
         assert len(history) == cfg.steps, (
             f"{tid}: len(history)={len(history)} != steps={cfg.steps}"
