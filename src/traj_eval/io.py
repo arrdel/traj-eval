@@ -39,12 +39,18 @@ def _parse_step(raw: Any, traj_id: str, idx: int) -> TrajectoryStep:
     raw_pred = raw.get("prediction", None)
     if raw_pred is not None:
         raw_pred = str(raw_pred)
+    raw_ans_comm = raw.get("answer_committed", None)
+    ans_comm = bool(raw_ans_comm) if raw_ans_comm is not None else None
+    raw_crf = raw.get("committed_reasoning_fraction", None)
+    crf = float(raw_crf) if raw_crf is not None else None
     return TrajectoryStep(
         step=step_no,
         prediction=raw_pred,
         reasoning_text=str(raw.get("reasoning_text", "") or ""),
         confidence=raw.get("confidence"),
         logits=raw.get("logits"),
+        answer_committed=ans_comm,
+        committed_reasoning_fraction=crf,
     )
 
 
@@ -128,6 +134,8 @@ def trajectories_to_dicts(trajectories: list[Trajectory]) -> list[dict[str, Any]
                         "reasoning_text": s.reasoning_text,
                         "confidence": s.confidence,
                         "logits": s.logits,
+                        "answer_committed": s.answer_committed,
+                        "committed_reasoning_fraction": s.committed_reasoning_fraction,
                     }
                     for s in t.steps
                 ],

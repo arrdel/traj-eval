@@ -24,6 +24,12 @@ class TrajectoryStep:
             a verdict.
         confidence: Optional confidence in [0, 1] for this step's prediction.
         logits: Optional raw logits for this step (kept for future adapters).
+        answer_committed: Optional flag indicating whether the final answer
+            token/span has irreversibly committed by this step (left the mask
+            state and never changed again).
+        committed_reasoning_fraction: Optional fraction in [0, 1] of
+            rationale/prefix positions before the answer that have
+            irreversibly committed by this step.
     """
 
     step: int
@@ -31,6 +37,8 @@ class TrajectoryStep:
     reasoning_text: str = ""
     confidence: float | None = None
     logits: list[float] | None = None
+    answer_committed: bool | None = None
+    committed_reasoning_fraction: float | None = None
 
 
 @dataclass

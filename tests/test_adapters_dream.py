@@ -144,3 +144,40 @@ def test_history_to_trajectory_final_null_is_correct_none():
     )
     assert traj.final_prediction is None
     assert traj.is_correct is None
+
+
+def test_history_to_trajectory_tracks_answer_first_backfill():
+    # Tokens: 10=prompt, 20="First reason. ", 21="Second reason. ", 30="Answer: ", 31="C", 999=mask
+    tok = FakeTokenizer(
+        {
+            10: "P",
+            20: "First reason. ",
+            21: "Second reason. ",
+            30: "Answer: ",
+            31: "C",
+            999: "",
+        }
+    )
+    # Answer token (pos 3, tok 31) commits at step 1 while rationale tokens (pos 0, 1) commit at steps 2 and 3.
+    history = [
+        [10, 999, 999, 999, 999],
+        [10, 999, 999, 30, 31],
+        [10, 20, 999, 30, 31],
+        [10, 20, 21, 30, 31],
+    ]
+    traj = history_to_trajectory(
+        traj_id="af1",
+        prompt="Q?",
+        gold_answer="C",
+        history=history,
+        tokenizer=tok,
+        prompt_len=1,
+        mask_token_id=999,
+    )
+    assert [s.prediction for s in traj.steps] == [None, "C", "C", "C"]
+    assert [s.answer_committed for s in traj.steps] == [False, True, True, True]
+    # Rationale positions before ans_pos (index 3) are indices 0, 1, 2 (tokens 20, 21, 30).
+    # At step 1: only token 30 (index 2) is committed -> 1/3 = 0.3333.
+    # At step 2: tokens 20, 30 committed -> 2/3 = 0.6667.
+    # At step 3: all 3 committed -> 1.0.
+    assert [s.committed_reasoning_fraction for s in traj.steps] == [0.0, 0.3333, 0.6667, 1.0]

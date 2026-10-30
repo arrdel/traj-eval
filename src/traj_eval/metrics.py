@@ -175,6 +175,70 @@ def forced_deliberation_delta(
     }
 
 
+def rationalization_components(traj: Trajectory) -> dict[str, float]:
+    """Decompose :func:`rationalization_score` into its three components.
+
+    Heuristic, not ground truth. Returns a dict with keys:
+    * ``early_factor``: ``1 - conv_idx / n`` in [0, 1].
+    * ``post_change_rate``: fraction of post-convergence steps whose
+      ``reasoning_text`` differs from the previous step, in [0, 1].
+    * ``length_growth``: relative growth in ``reasoning_text`` length from
+      convergence to the final step, clipped to [0, 1].
+    * ``score``: the combined heuristic score in [0, 1].
+
+    Exposing the components prevents a direct-answer run with
+    ``post_change_rate == 0.0`` from being misread as rationalization
+    solely because ``early_factor`` is close to 1.0.
+    """
+    steps = traj.steps
+    n = len(steps)
+    if n <= 1:
+        return {
+            "early_factor": 0.0,
+            "post_change_rate": 0.0,
+            "length_growth": 0.0,
+            "score": 0.0,
+        }
+    conv_idx = _convergence_index(traj)
+    if conv_idx is None:
+        return {
+            "early_factor": 0.0,
+            "post_change_rate": 0.0,
+            "length_growth": 0.0,
+            "score": 0.0,
+        }
+    early_factor = 1.0 - (conv_idx / n)
+    post = steps[conv_idx + 1 :]
+    if not post:
+        return {
+            "early_factor": round(float(early_factor), 4),
+            "post_change_rate": 0.0,
+            "length_growth": 0.0,
+            "score": round(0.3 * early_factor, 4),
+        }
+    changes = 0
+    prev = steps[conv_idx].reasoning_text
+    for s in post:
+        if s.reasoning_text != prev:
+            changes += 1
+        prev = s.reasoning_text
+    post_change_rate = changes / len(post)
+    conv_len = len(steps[conv_idx].reasoning_text)
+    last_len = len(steps[-1].reasoning_text)
+    if conv_len == 0:
+        length_growth = 1.0 if last_len > 0 else 0.0
+    else:
+        length_growth = max(0.0, (last_len - conv_len) / conv_len)
+        length_growth = min(1.0, length_growth)
+    score = 0.4 * early_factor + 0.4 * post_change_rate + 0.2 * length_growth
+    return {
+        "early_factor": round(float(early_factor), 4),
+        "post_change_rate": round(float(post_change_rate), 4),
+        "length_growth": round(float(length_growth), 4),
+        "score": round(float(max(0.0, min(1.0, score))), 4),
+    }
+
+
 def rationalization_score(traj: Trajectory) -> float:
     """Heuristic 0-1 score for "verdict first, reasoning afterwards".
 
@@ -193,38 +257,62 @@ def rationalization_score(traj: Trajectory) -> float:
     Empty trajectories score 0.0. Trajectories that converge at the last
     step (no post-convergence reasoning) score low.
     """
+    return rationalization_components(traj)["score"]
+
+
+def answer_commitment_step(traj: Trajectory) -> int | None:
+    """First step after which ``answer_committed`` stays True to the end.
+
+    Descriptive commitment clock (``T_commit`` in Kim & Choi 2026;
+    irreversible answer commitment in Yeom et al. 2026). Returns None if
+    the trajectory is empty, if ``answer_committed`` was not logged, or
+    if the final step's ``answer_committed`` is not True.
+    """
     steps = traj.steps
-    n = len(steps)
-    if n == 0:
-        return 0.0
-    if n == 1:
-        return 0.0
-    conv_idx = _convergence_index(traj)
-    if conv_idx is None:
-        # No verdict at all (all null): nothing to rationalize.
-        return 0.0
-    early_factor = 1.0 - (conv_idx / n)
-    post = steps[conv_idx + 1 :]
-    if not post:
-        # Converged at last step: no elaboration after verdict.
-        return round(0.3 * early_factor, 4)
-    # Post-convergence reasoning change rate.
-    changes = 0
-    prev = steps[conv_idx].reasoning_text
-    for s in post:
-        if s.reasoning_text != prev:
-            changes += 1
-        prev = s.reasoning_text
-    post_change_rate = changes / len(post)
-    conv_len = len(steps[conv_idx].reasoning_text)
-    last_len = len(steps[-1].reasoning_text)
-    if conv_len == 0:
-        length_growth = 1.0 if last_len > 0 else 0.0
-    else:
-        length_growth = max(0.0, (last_len - conv_len) / conv_len)
-        length_growth = min(1.0, length_growth)
-    score = 0.4 * early_factor + 0.4 * post_change_rate + 0.2 * length_growth
-    return round(float(max(0.0, min(1.0, score))), 4)
+    if not steps or steps[-1].answer_committed is not True:
+        return None
+    i = len(steps) - 1
+    while i > 0 and steps[i - 1].answer_committed is True:
+        i -= 1
+    return steps[i].step
+
+
+def stability_commitment_lag(traj: Trajectory) -> int | None:
+    """Difference ``T_commit - T_stab`` in denoising steps.
+
+    Descriptive metric comparing irreversible token commitment
+    (:func:`answer_commitment_step`) against retrospective parsed-verdict
+    stabilization (:func:`verdict_convergence_step`). Returns None if
+    either clock is undefined.
+
+    * ``> 0``: the parsed verdict stabilized before the final answer
+      token/span became irreversibly committed.
+    * ``== 0``: verdict stabilization and answer commitment coincided.
+    * ``< 0``: the final answer token committed earlier than the last
+      parsed-verdict change (e.g. a later token altered regex parsing).
+    """
+    t_stab = verdict_convergence_step(traj)
+    t_comm = answer_commitment_step(traj)
+    if t_stab is None or t_comm is None:
+        return None
+    return t_comm - t_stab
+
+
+def unwritten_reasoning_at_convergence(traj: Trajectory) -> float | None:
+    """Fraction of rationale-side positions still uncommitted at ``T_stab``.
+
+    Descriptive metric matching Kim & Choi's unwritten fraction
+    ``U = 1 - F_R(T_stab)`` in [0, 1]. Returns None if the trajectory has
+    no convergence step or if ``committed_reasoning_fraction`` was not
+    logged at the convergence step.
+    """
+    idx = _convergence_index(traj)
+    if idx is None:
+        return None
+    crf = traj.steps[idx].committed_reasoning_fraction
+    if crf is None:
+        return None
+    return round(float(max(0.0, min(1.0, 1.0 - crf))), 4)
 
 
 def early_convergence_fraction(
@@ -256,20 +344,31 @@ def evaluate_trajectories(trajectories: list[Trajectory]) -> dict[str, Any]:
     Returns a dict with ``per_trajectory`` (list) and ``aggregate``
     (summary dict). Aggregate includes accuracy, mean/median
     convergence step and fraction, mean flip rate, mean
-    rationalization score, and early-convergence fraction.
+    rationalization score (plus its three components), early-convergence
+    fraction, and optional commitment-clock summaries when logged.
     """
     per: list[dict[str, Any]] = []
     conv_steps: list[int] = []
     conv_fracs: list[float] = []
     flip_rates: list[float] = []
     rat_scores: list[float] = []
+    early_factors: list[float] = []
+    post_change_rates: list[float] = []
+    length_growths: list[float] = []
+    comm_steps: list[int] = []
+    comm_lags: list[int] = []
+    unwritten_fracs: list[float] = []
 
     for t in trajectories:
         conv_step = verdict_convergence_step(t)
         idx = _convergence_index(t)
         fr = flip_rate(t)
         cons = step_consistency(t)
-        rat = rationalization_score(t)
+        rat_comp = rationalization_components(t)
+        rat = rat_comp["score"]
+        t_comm = answer_commitment_step(t)
+        lag = stability_commitment_lag(t)
+        unwritten = unwritten_reasoning_at_convergence(t)
         per.append(
             {
                 "id": t.id,
@@ -278,11 +377,17 @@ def evaluate_trajectories(trajectories: list[Trajectory]) -> dict[str, Any]:
                 "correct": t.is_correct,
                 "convergence_step": conv_step,
                 "convergence_index": idx,
-                "convergence_fraction": (idx / len(t.steps)) if t.steps else None,
+                "convergence_fraction": (idx / len(t.steps)) if (t.steps and idx is not None) else None,
                 "flip_rate": round(fr, 4),
                 "consistency": round(cons["consistency"], 4),
                 "longest_stable_run": cons["longest_stable_run"],
                 "rationalization_score": rat,
+                "early_factor": rat_comp["early_factor"],
+                "post_change_rate": rat_comp["post_change_rate"],
+                "length_growth": rat_comp["length_growth"],
+                "answer_commitment_step": t_comm,
+                "stability_commitment_lag": lag,
+                "unwritten_reasoning_at_convergence": unwritten,
                 "n_steps": len(t.steps),
             }
         )
@@ -291,6 +396,15 @@ def evaluate_trajectories(trajectories: list[Trajectory]) -> dict[str, Any]:
             conv_fracs.append(idx / len(t.steps))
         flip_rates.append(fr)
         rat_scores.append(rat)
+        early_factors.append(rat_comp["early_factor"])
+        post_change_rates.append(rat_comp["post_change_rate"])
+        length_growths.append(rat_comp["length_growth"])
+        if t_comm is not None:
+            comm_steps.append(t_comm)
+        if lag is not None:
+            comm_lags.append(lag)
+        if unwritten is not None:
+            unwritten_fracs.append(unwritten)
 
     def _mean(xs: list[float]) -> float:
         return float(statistics.mean(xs)) if xs else 0.0
@@ -298,16 +412,22 @@ def evaluate_trajectories(trajectories: list[Trajectory]) -> dict[str, Any]:
     def _median(xs: list[float]) -> float:
         return float(statistics.median(xs)) if xs else 0.0
 
-    aggregate = {
+    aggregate: dict[str, Any] = {
         "n_trajectories": len(trajectories),
-        "n_scored_for_accuracy": len([t for t in trajectories if t.steps and t.gold_answer != ""]),
+        "n_scored_for_accuracy": len([t for t in trajectories if t.steps and t.gold_answer != "" and t.is_correct is not None]),
         "accuracy": round(trajectory_accuracy(trajectories), 4),
         "mean_flip_rate": round(_mean(flip_rates), 4),
         "mean_rationalization_score": round(_mean(rat_scores), 4),
+        "mean_early_factor": round(_mean(early_factors), 4),
+        "mean_post_change_rate": round(_mean(post_change_rates), 4),
+        "mean_length_growth": round(_mean(length_growths), 4),
         "early_convergence_fraction": round(early_convergence_fraction(trajectories), 4),
         "mean_convergence_step": round(_mean([float(x) for x in conv_steps]), 4) if conv_steps else 0.0,
         "median_convergence_step": round(_median([float(x) for x in conv_steps]), 4) if conv_steps else 0.0,
         "mean_convergence_fraction": round(_mean(conv_fracs), 4),
         "median_convergence_fraction": round(_median(conv_fracs), 4),
+        "mean_answer_commitment_step": round(_mean([float(x) for x in comm_steps]), 4) if comm_steps else None,
+        "mean_stability_commitment_lag": round(_mean([float(x) for x in comm_lags]), 4) if comm_lags else None,
+        "mean_unwritten_reasoning_at_convergence": round(_mean(unwritten_fracs), 4) if unwritten_fracs else None,
     }
     return {"per_trajectory": per, "aggregate": aggregate}

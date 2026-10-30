@@ -57,7 +57,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol, Sequence
+from typing import Any, Callable, Protocol, Sequence
 
 from traj_eval.types import Trajectory, TrajectoryStep
 
@@ -167,6 +167,90 @@ def decode_generation_region(
     return tokenizer.decode(gen_ids, skip_special_tokens=True)
 
 
+def compute_step_commitments(
+    history: Sequence[Any],
+    prompt_len: int,
+    tokenizer: TokenizerLike,
+    mask_token_id: int | None = None,
+    final_verdict: str | None = None,
+) -> list[tuple[bool, float]]:
+    """Compute per-step ``(answer_committed, committed_reasoning_fraction)``.
+
+    A generation canvas position ``j`` is irreversibly committed at step
+    ``tau[j]`` once its token id leaves ``mask_token_id`` and stays equal
+    to its final-step value for all remaining steps in ``history``.
+
+    Content positions ``C`` are canvas positions whose final token is
+    non-mask and decodes to a non-empty string with
+    ``skip_special_tokens=True`` (excluding trailing EOS/padding tokens).
+    When ``final_verdict`` is non-null, the answer position ``a`` is the
+    last position in ``C`` whose decoded piece contains ``final_verdict``
+    (or ``C[-1]`` if the verdict spans subwords), and the rationale-side
+    region is ``R = [j for j in C if j < a]``.
+    """
+    n_steps = len(history)
+    if n_steps == 0:
+        return []
+    mask_id = mask_token_id if mask_token_id is not None else tokenizer.mask_token_id
+    raw_seqs: list[list[int]] = []
+    for entry in history:
+        ids = _as_int_list(entry)
+        raw_seqs.append(ids[prompt_len:] if prompt_len < len(ids) else [])
+    canvas_len = max((len(s) for s in raw_seqs), default=0)
+    if canvas_len == 0:
+        return [(False, 0.0) for _ in range(n_steps)]
+
+    # Pad any shorter stub rows with mask_id so indexing is uniform.
+    gen_seqs = [s + [mask_id] * (canvas_len - len(s)) for s in raw_seqs]
+    final_row = gen_seqs[-1]
+
+    # First irreversible commitment step tau[j] for each canvas slot j.
+    inf_step = n_steps + 1
+    tau: list[int] = [inf_step] * canvas_len
+    for j in range(canvas_len):
+        final_tok = final_row[j]
+        if final_tok == mask_id:
+            continue
+        t = n_steps - 1
+        while t > 0 and gen_seqs[t - 1][j] == final_tok:
+            t -= 1
+        tau[j] = t
+
+    # Content positions: non-mask final tokens that decode to non-empty text.
+    content_pos: list[int] = []
+    pieces: dict[int, str] = {}
+    for j, tok_id in enumerate(final_row):
+        if tok_id == mask_id:
+            continue
+        piece = tokenizer.decode([tok_id], skip_special_tokens=True)
+        if piece:
+            content_pos.append(j)
+            pieces[j] = piece
+
+    if not content_pos or final_verdict is None:
+        return [(False, 0.0) for _ in range(n_steps)]
+
+    target = final_verdict.strip().upper()
+    ans_pos: int | None = None
+    for j in reversed(content_pos):
+        if target and target in pieces[j].upper():
+            ans_pos = j
+            break
+    if ans_pos is None:
+        ans_pos = content_pos[-1]
+
+    rationale_pos = [j for j in content_pos if j < ans_pos]
+    out: list[tuple[bool, float]] = []
+    for t in range(n_steps):
+        ans_comm = tau[ans_pos] <= t
+        if rationale_pos:
+            crf = sum(1 for j in rationale_pos if tau[j] <= t) / len(rationale_pos)
+        else:
+            crf = 1.0 if ans_comm else 0.0
+        out.append((bool(ans_comm), round(float(crf), 4)))
+    return out
+
+
 def history_to_trajectory(
     *,
     traj_id: str,
@@ -176,22 +260,45 @@ def history_to_trajectory(
     tokenizer: TokenizerLike,
     prompt_len: int,
     mask_token_id: int | None = None,
+    verdict_fn: Callable[[str], str | None] = extract_verdict,
 ) -> Trajectory:
     """Convert Dream ``output.history`` to a standard ``Trajectory``.
 
     One step per history entry: ``step=i``, ``prediction`` is the
-    extracted A-D letter or ``None``, ``reasoning_text`` is the
-    decoded mask-stripped generation region.
+    extracted verdict (A-D letter by default, or custom ``verdict_fn``)
+    or ``None``, ``reasoning_text`` is the decoded mask-stripped
+    generation region, and ``answer_committed`` /
+    ``committed_reasoning_fraction`` track token commitment across the
+    canvas.
 
     Sanity: caller should assert ``len(history) == steps`` and that
     the final parsed verdict matches the verdict parsed from
     ``output.sequences`` (see ``run_dream_arcc_smoke``).
     """
-    steps: list[TrajectoryStep] = []
-    for i, entry in enumerate(history):
+    decoded_steps: list[tuple[str, str | None]] = []
+    for entry in history:
         text = decode_generation_region(entry, prompt_len, tokenizer, mask_token_id)
-        verdict = extract_verdict(text)
-        steps.append(TrajectoryStep(step=i, prediction=verdict, reasoning_text=text))
+        verdict = verdict_fn(text)
+        decoded_steps.append((text, verdict))
+    final_verdict = decoded_steps[-1][1] if decoded_steps else None
+    commitments = compute_step_commitments(
+        history=history,
+        prompt_len=prompt_len,
+        tokenizer=tokenizer,
+        mask_token_id=mask_token_id,
+        final_verdict=final_verdict,
+    )
+    steps: list[TrajectoryStep] = []
+    for i, ((text, verdict), (ans_comm, crf)) in enumerate(zip(decoded_steps, commitments)):
+        steps.append(
+            TrajectoryStep(
+                step=i,
+                prediction=verdict,
+                reasoning_text=text,
+                answer_committed=ans_comm,
+                committed_reasoning_fraction=crf,
+            )
+        )
     return Trajectory(id=traj_id, prompt=prompt, gold_answer=gold_answer, steps=steps)
 
 

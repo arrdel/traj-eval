@@ -81,6 +81,10 @@ Malformed files raise `ValueError` with a clear message instead of silently drop
 | Trajectory accuracy | `trajectory_accuracy` | [0, 1] | Fraction where final prediction == gold. Skips empty / unknown-gold trajectories. |
 | Forced deliberation delta | `forced_deliberation_delta` | dict | Given `base_accuracy` and `forced_accuracy`, returns `delta = forced - base` and `relative_drop = (base - forced) / base`. Negative delta means forcing longer deliberation hurt accuracy. |
 | Rationalization score | `rationalization_score` | [0, 1] | **Heuristic.** High when verdict converges early AND reasoning keeps changing/lengthening after convergence. Formula: `0.4*early_factor + 0.4*post_change_rate + 0.2*length_growth`. Not ground truth. |
+| Rationalization components | `rationalization_components` | dict | **Heuristic decomposition.** Returns `early_factor`, `post_change_rate`, `length_growth`, and `score` so direct-answer runs (`post_change_rate == 0`) are distinguishable from post-verdict elaboration. |
+| Answer commitment step | `answer_commitment_step` | step number or None | First step after which `answer_committed` stays True to the end (`T_commit`). None if not logged or never committed. |
+| Stability–commitment lag | `stability_commitment_lag` | int or None | `T_commit - T_stab` in steps (`answer_commitment_step - verdict_convergence_step`). None if either is undefined. |
+| Unwritten reasoning at convergence | `unwritten_reasoning_at_convergence` | [0, 1] or None | `1 - committed_reasoning_fraction` at the verdict convergence step (`T_stab`). None if not logged. |
 | Early convergence fraction | `early_convergence_fraction` | [0, 1] | Fraction of trajectories converging within the first 20% of steps (threshold configurable). |
 | Aggregate | `evaluate_trajectories` | dict | Per-trajectory results + aggregate: accuracy, mean/median convergence step and fraction, mean flip rate, mean rationalization score, early convergence fraction. |
 

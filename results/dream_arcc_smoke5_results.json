@@ -12,6 +12,12 @@
       "consistency": 1.0,
       "longest_stable_run": 253,
       "rationalization_score": 0.3953,
+      "early_factor": 0.9883,
+      "post_change_rate": 0.0,
+      "length_growth": 0.0,
+      "answer_commitment_step": null,
+      "stability_commitment_lag": null,
+      "unwritten_reasoning_at_convergence": null,
       "n_steps": 256
     },
     {
@@ -26,6 +32,12 @@
       "consistency": 1.0,
       "longest_stable_run": 253,
       "rationalization_score": 0.3953,
+      "early_factor": 0.9883,
+      "post_change_rate": 0.0,
+      "length_growth": 0.0,
+      "answer_commitment_step": null,
+      "stability_commitment_lag": null,
+      "unwritten_reasoning_at_convergence": null,
       "n_steps": 256
     },
     {
@@ -40,6 +52,12 @@
       "consistency": 1.0,
       "longest_stable_run": 253,
       "rationalization_score": 0.3953,
+      "early_factor": 0.9883,
+      "post_change_rate": 0.0,
+      "length_growth": 0.0,
+      "answer_commitment_step": null,
+      "stability_commitment_lag": null,
+      "unwritten_reasoning_at_convergence": null,
       "n_steps": 256
     },
     {
@@ -54,6 +72,12 @@
       "consistency": 1.0,
       "longest_stable_run": 253,
       "rationalization_score": 0.3953,
+      "early_factor": 0.9883,
+      "post_change_rate": 0.0,
+      "length_growth": 0.0,
+      "answer_commitment_step": null,
+      "stability_commitment_lag": null,
+      "unwritten_reasoning_at_convergence": null,
       "n_steps": 256
     },
     {
@@ -68,6 +92,12 @@
       "consistency": 1.0,
       "longest_stable_run": 252,
       "rationalization_score": 0.3938,
+      "early_factor": 0.9844,
+      "post_change_rate": 0.0,
+      "length_growth": 0.0,
+      "answer_commitment_step": null,
+      "stability_commitment_lag": null,
+      "unwritten_reasoning_at_convergence": null,
       "n_steps": 256
     }
   ],
@@ -77,10 +107,16 @@
     "accuracy": 1.0,
     "mean_flip_rate": 0.0,
     "mean_rationalization_score": 0.395,
+    "mean_early_factor": 0.9875,
+    "mean_post_change_rate": 0.0,
+    "mean_length_growth": 0.0,
     "early_convergence_fraction": 1.0,
     "mean_convergence_step": 3.2,
     "median_convergence_step": 3.0,
     "mean_convergence_fraction": 0.0125,
-    "median_convergence_fraction": 0.0117
+    "median_convergence_fraction": 0.0117,
+    "mean_answer_commitment_step": null,
+    "mean_stability_commitment_lag": null,
+    "mean_unwritten_reasoning_at_convergence": null
   }
 }

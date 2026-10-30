@@ -3,13 +3,17 @@
 import pytest
 
 from traj_eval.metrics import (
+    answer_commitment_step,
     early_convergence_fraction,
     evaluate_trajectories,
     flip_rate,
     forced_deliberation_delta,
+    rationalization_components,
     rationalization_score,
+    stability_commitment_lag,
     step_consistency,
     trajectory_accuracy,
+    unwritten_reasoning_at_convergence,
     verdict_convergence_step,
 )
 from traj_eval.synthetic import generate_synthetic_trajectories
@@ -159,3 +163,73 @@ def test_synthetic_archetypes_differ():
     means = {k: sum(fr(t) for t in v) / len(v) for k, v in by_prefix.items()}
     assert means["oscillation"] > means["genuine"]
     assert means["oscillation"] > means["rationalization"]
+
+
+def test_rationalization_components_distinguish_direct_from_elaborating():
+    # Direct answer: verdict settles early and reasoning text never changes after.
+    direct = _traj(
+        ["C"] * 4,
+        gold="C",
+        reasoning=["Answer: C"] * 4,
+    )
+    comp_dir = rationalization_components(direct)
+    assert comp_dir["early_factor"] == pytest.approx(1.0)
+    assert comp_dir["post_change_rate"] == 0.0
+    assert comp_dir["length_growth"] == 0.0
+    assert comp_dir["score"] == pytest.approx(0.4)
+
+    # Elaborating after verdict: post_change_rate and length_growth are high.
+    elab = _traj(
+        ["C"] * 4,
+        gold="C",
+        reasoning=["C", "C because x", "C because x and y", "C because x and y and z"],
+    )
+    comp_elab = rationalization_components(elab)
+    assert comp_elab["post_change_rate"] == pytest.approx(1.0)
+    assert comp_elab["length_growth"] == pytest.approx(1.0)
+    assert comp_elab["score"] == pytest.approx(1.0)
+
+
+def test_commitment_clocks_and_unwritten_fraction():
+    # Answer stabilizes at step 1 (T_stab=1) and commits at step 2 (T_commit=2).
+    steps = [
+        TrajectoryStep(
+            step=0,
+            prediction=None,
+            reasoning_text="",
+            answer_committed=False,
+            committed_reasoning_fraction=0.0,
+        ),
+        TrajectoryStep(
+            step=1,
+            prediction="B",
+            reasoning_text="Answer: B",
+            answer_committed=False,
+            committed_reasoning_fraction=0.25,
+        ),
+        TrajectoryStep(
+            step=2,
+            prediction="B",
+            reasoning_text="Because of X, Answer: B",
+            answer_committed=True,
+            committed_reasoning_fraction=0.5,
+        ),
+        TrajectoryStep(
+            step=3,
+            prediction="B",
+            reasoning_text="Because of X and Y, Answer: B",
+            answer_committed=True,
+            committed_reasoning_fraction=1.0,
+        ),
+    ]
+    t = Trajectory(id="c1", prompt="q", gold_answer="B", steps=steps)
+    assert verdict_convergence_step(t) == 1
+    assert answer_commitment_step(t) == 2
+    assert stability_commitment_lag(t) == 1
+    # At T_stab (step 1), 25% of reasoning is committed -> 75% unwritten.
+    assert unwritten_reasoning_at_convergence(t) == pytest.approx(0.75)
+
+    out = evaluate_trajectories([t])
+    assert out["aggregate"]["mean_answer_commitment_step"] == pytest.approx(2.0)
+    assert out["aggregate"]["mean_stability_commitment_lag"] == pytest.approx(1.0)
+    assert out["aggregate"]["mean_unwritten_reasoning_at_convergence"] == pytest.approx(0.75)
