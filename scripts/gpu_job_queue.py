@@ -409,6 +409,64 @@ def format_baselines_entry(
     return "\n".join(lines)
 
 
+def format_pr_body(
+    *,
+    job: QueuedJob,
+    gpu: GPUStatus,
+    pytest_out: str,
+    eval_results: dict[str, Any],
+    gate_result: dict[str, Any] | None,
+) -> str:
+    """Format a GitHub Pull Request body matching ``.github/pull_request_template.md``."""
+    agg = eval_results["aggregate"]
+    per = eval_results["per_trajectory"]
+    n_total = len(per)
+    n_non_null = sum(1 for r in per if r.get("final_prediction") is not None)
+    n_undecided = n_total - n_non_null
+    gate_str = (
+        f"pass ({gate_result['status']})"
+        if (gate_result is not None and gate_result.get("passed"))
+        else (
+            f"fail ({gate_result['status']})"
+            if gate_result is not None
+            else f"n/a ({n_non_null}/{n_total} decided, {n_undecided} undecided)"
+        )
+    )
+    return "\n".join(
+        [
+            "## What changed and why",
+            "",
+            f"Runs pre-registered GPU stage `{job.job_id}` ({job.title}) on GPU `{gpu.index}` (`{gpu.name}`, `{gpu.memory_free_mib} MiB` free at launch), scores the trajectories into `{job.out_results}`, and appends the full provenance and decomposed rationalization components (`early_factor={agg.get('mean_early_factor')}`, `post_change_rate={agg.get('mean_post_change_rate')}`, `length_growth={agg.get('mean_length_growth')}`, `gated_score={agg.get('mean_gated_rationalization_score')}`) to `results/baselines.md`. No metric definitions, null rules, or sampler configs were changed.",
+            "",
+            "## Checklist (fill in every item, do not delete items)",
+            "",
+            "- [x] One logical change only; branch is not `master`",
+            "- [x] `python -m pytest -q` tail pasted below (verbatim, after this change)",
+            "- [x] Tests added or updated for any metric, adapter, or extractor change (n/a: experiment artifact PR only)",
+            "- [x] No weights in tests; no torch/transformers import at module import time in `src/`",
+            "- [x] Null rule unchanged (`None` = no verdict, not a flip), or the change is documented in metrics, adapter, handoff, and paper outline together",
+            f"- [x] Prompt template unchanged, or the new prompt is pre-registered with its own output files (`{job.items_path}` -> `{job.out_jsonl}`, never overwriting an existing condition)",
+            f"- [x] Sampler config unchanged mid-run; any GPU run includes its run log path (`{job.out_log}`)",
+            "- [x] No paper claim beyond what the artifacts in this PR prove (5 items = pipeline check only)",
+            "- [x] Scope check: this PR does not add a new adapter, metric, credit scheme, intervention hook, or prompt condition unless the current follow-up doc explicitly allows it",
+            "",
+            "## Test output (verbatim tail)",
+            "",
+            "```",
+            pytest_out.strip(),
+            "```",
+            "",
+            "## GPU run (if any)",
+            "",
+            f"- Run log path: `{job.out_log}`",
+            f"- GPU index and free memory at launch: GPU `{gpu.index}` (`{gpu.name}`, `{gpu.memory_free_mib} MiB` free, `{gpu.utilization_pct}%` util)",
+            f"- Sampler config (temperature, top_p, alg, alg_temp, steps, max_new_tokens): `temperature={job.temperature}, top_p={job.top_p}, alg=entropy, alg_temp=0.0, steps={job.steps}, max_new_tokens={job.max_new_tokens}, force_deliberation_steps={job.force_deliberation_steps}, frontier_width={job.frontier_width}`",
+            f"- Gate result (pass / fail, with reason if fail): `{gate_str}`",
+            "",
+        ]
+    )
+
+
 def _capture_summary_text(results: dict[str, Any]) -> str:
     import io
     from contextlib import redirect_stdout
@@ -542,6 +600,8 @@ def run_single_queued_job(
             encoding="utf-8",
         )
 
+    pr_url: str | None = None
+    branch_name = f"feat/smoke-{job.job_id.replace('_', '-')}"
     if auto_commit_push:
         files_to_stage = [
             job.out_jsonl,
@@ -557,14 +617,16 @@ def run_single_queued_job(
             cwd=repo_root,
             text=True,
         ).strip()
+        subprocess.run(["git", "checkout", "-B", branch_name], cwd=repo_root, check=True)
         subprocess.run(["git", "add", "--", *files_to_stage], cwd=repo_root, check=True)
         gate_line = (
             gate_result["status"]
             if gate_result is not None
             else "smoke clean."
         )
+        pr_title = f"feat(smoke): run {job.job_id} on GPU {gpu.index}"
         commit_msg = (
-            f"feat(smoke): run {job.job_id} on GPU {gpu.index}\n\n"
+            f"{pr_title}\n\n"
             f"{gate_line}\n\n"
             f"- Model family: {job.model_family} ({job.task})\n"
             f"- GPU: {gpu.index} ({gpu.name}, {gpu.memory_free_mib} MiB free at launch)\n"
@@ -572,14 +634,72 @@ def run_single_queued_job(
             f"pytest -q:\n{pytest_out}"
         )
         subprocess.run(["git", "commit", "-m", commit_msg], cwd=repo_root, check=True)
-        subprocess.run(["git", "push", "origin", "master"], cwd=repo_root, check=True)
+        subprocess.run(
+            ["git", "push", "-u", "origin", branch_name, "--force-with-lease"],
+            cwd=repo_root,
+            check=True,
+        )
+        pr_body = format_pr_body(
+            job=job,
+            gpu=gpu,
+            pytest_out=pytest_out,
+            eval_results=eval_results,
+            gate_result=gate_result,
+        )
+        pr_proc = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "create",
+                "--base",
+                "master",
+                "--head",
+                branch_name,
+                "--title",
+                pr_title,
+                "--body",
+                pr_body,
+            ],
+            cwd=repo_root,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if pr_proc.returncode == 0:
+            pr_url = pr_proc.stdout.strip()
+        else:
+            view_proc = subprocess.run(
+                ["gh", "pr", "view", branch_name, "--json", "url", "-q", ".url"],
+                cwd=repo_root,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            pr_url = view_proc.stdout.strip() if view_proc.returncode == 0 else None
+        print(f"[gpu-queue] Opened PR for {job.job_id}: {pr_url}", flush=True)
 
     return {
         "job_id": job.job_id,
+        "branch": branch_name,
+        "pr_url": pr_url,
         "gpu_index": gpu.index,
         "accuracy": eval_results["aggregate"]["accuracy"],
         "gate": gate_result,
     }
+
+
+def query_pr_state(branch_name: str, repo_root: Path = REPO_ROOT) -> str | None:
+    """Return ``'OPEN'``, ``'MERGED'``, or ``'CLOSED'`` for ``branch_name`` via ``gh pr view``."""
+    proc = subprocess.run(
+        ["gh", "pr", "view", branch_name, "--json", "state", "-q", ".state"],
+        cwd=repo_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip().upper() or None
 
 
 def run_queue_loop(
@@ -592,8 +712,9 @@ def run_queue_loop(
     max_jobs: int | None = None,
     fake: bool = False,
     auto_commit_push: bool = True,
+    wait_for_pr_merge: bool = True,
 ) -> dict[str, Any]:
-    """Poll for a free GPU and execute pending jobs in strict sequence."""
+    """Poll for a free GPU and execute pending jobs in strict PR-gated sequence."""
     completed_runs: list[dict[str, Any]] = []
     halted_reason: str | None = None
 
@@ -607,6 +728,7 @@ def run_queue_loop(
             "pid": os.getpid(),
             "min_free_mib": min_free_mib,
             "max_util_pct": max_util_pct,
+            "wait_for_pr_merge": wait_for_pr_merge,
             "pending_jobs": [j.job_id for j in pending],
             "completed_runs": completed_runs,
         }
@@ -691,6 +813,42 @@ def run_queue_loop(
             print(f"[gpu-queue] HALTING QUEUE per protocol gate: {halted_reason}", flush=True)
             break
 
+        # Per docs/PR_WORKFLOW.md §§5-6, wait for the managing agent (Muse) to
+        # review and merge this job's PR before starting the next scope/job.
+        if auto_commit_push and wait_for_pr_merge and not fake:
+            branch_name = str(res["branch"])
+            while True:
+                pr_state = query_pr_state(branch_name)
+                if pr_state == "MERGED":
+                    subprocess.run(["git", "checkout", "master"], cwd=REPO_ROOT, check=False)
+                    subprocess.run(
+                        ["git", "pull", "--ff-only", "origin", "master"],
+                        cwd=REPO_ROOT,
+                        check=False,
+                    )
+                    print(
+                        f"[gpu-queue] PR for {job.job_id} ({branch_name}) MERGED! Proceeding to next job.",
+                        flush=True,
+                    )
+                    break
+                if pr_state == "CLOSED":
+                    halted_reason = f"PR for {job.job_id} ({branch_name}) was closed without merging"
+                    print(f"[gpu-queue] HALTING QUEUE: {halted_reason}", flush=True)
+                    break
+                _write_queue_state(
+                    {
+                        "status": "waiting_for_pr_merge",
+                        "pid": os.getpid(),
+                        "awaiting_pr_branch": branch_name,
+                        "pr_url": res.get("pr_url"),
+                        "pr_state": pr_state,
+                        "completed_runs": completed_runs,
+                    }
+                )
+                time.sleep(poll_interval_sec)
+            if halted_reason:
+                break
+
     final_status = "halted_on_gate" if halted_reason else "completed"
     summary = {
         "status": final_status,
@@ -710,7 +868,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--confirm-delay", type=float, default=10.0, help="Seconds between double-check polls")
     ap.add_argument("--max-jobs", type=int, default=None, help="Stop after running at most N pending jobs")
     ap.add_argument("--fake", action="store_true", help="Dry-run with stub model and fake GPU")
-    ap.add_argument("--no-git", action="store_true", help="Do not run git pull/commit/push")
+    ap.add_argument("--no-git", action="store_true", help="Do not run git branch/commit/push/PR")
+    ap.add_argument(
+        "--no-wait-for-pr-merge",
+        action="store_true",
+        help="Do not wait for each job's PR to be merged before running the next job",
+    )
     ap.add_argument("--status", action="store_true", help="Print current queue + GPU status and exit")
     args = ap.parse_args(argv)
 
@@ -747,6 +910,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_jobs=args.max_jobs,
             fake=args.fake,
             auto_commit_push=not args.no_git,
+            wait_for_pr_merge=not args.no_wait_for_pr_merge,
         )
         return 1 if summary["status"] == "halted_on_gate" else 0
     finally:

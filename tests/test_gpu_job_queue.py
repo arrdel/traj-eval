@@ -14,6 +14,7 @@ from scripts.gpu_job_queue import (
     QueuedJob,
     build_smoke_command,
     format_baselines_entry,
+    format_pr_body,
     is_job_completed,
     parse_nvidia_smi_csv,
     select_available_gpu,
@@ -133,3 +134,45 @@ def test_format_baselines_entry_includes_provenance_and_side_by_side():
     assert "0 undecided" in md
     assert "Side-by-side rationalization components (`direct` vs `reasoning`)" in md
     assert "| `post_change_rate` | 0.0000 | 0.4000 | +0.4000 |" in md
+
+
+def test_format_pr_body_matches_pr_template():
+    job = DEFAULT_JOB_QUEUE[0]
+    gpu = GPUStatus(
+        index=4,
+        name="NVIDIA RTX A6000",
+        memory_used_mib=16899,
+        memory_free_mib=32241,
+        memory_total_mib=49140,
+        utilization_pct=0,
+    )
+    eval_results = {
+        "per_trajectory": [{"id": "q1", "final_prediction": "C"}],
+        "aggregate": {
+            "n_trajectories": 5,
+            "accuracy": 1.0,
+            "mean_early_factor": 0.85,
+            "mean_post_change_rate": 0.4,
+            "mean_length_growth": 0.5,
+            "mean_rationalization_score": 0.6,
+            "mean_gated_rationalization_score": 0.3683,
+        },
+    }
+    gate_result = {
+        "passed": True,
+        "status": "reasoning smoke clean",
+    }
+    body = format_pr_body(
+        job=job,
+        gpu=gpu,
+        pytest_out="63 passed in 0.35s",
+        eval_results=eval_results,
+        gate_result=gate_result,
+    )
+    assert "## What changed and why" in body
+    assert "## Checklist (fill in every item, do not delete items)" in body
+    assert "- [x] One logical change only; branch is not `master`" in body
+    assert "## Test output (verbatim tail)" in body
+    assert "63 passed in 0.35s" in body
+    assert "## GPU run (if any)" in body
+    assert "pass (reasoning smoke clean)" in body

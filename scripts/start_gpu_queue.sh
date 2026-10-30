@@ -11,6 +11,7 @@ QUEUE_SCRIPT="${REPO_ROOT}/scripts/gpu_job_queue.py"
 PID_FILE="${REPO_ROOT}/.gpu_queue.pid"
 LOCK_FILE="${REPO_ROOT}/.gpu_queue.lock"
 LOG_FILE="${REPO_ROOT}/.gpu_queue_daemon.log"
+TMUX_SESSION="traj_eval_gpu_queue"
 
 ACTION="${1:-start}"
 shift || true
@@ -24,10 +25,21 @@ case "${ACTION}" in
         exit 0
       fi
     fi
-    nohup "${PYTHON_BIN}" "${QUEUE_SCRIPT}" "$@" >> "${LOG_FILE}" 2>&1 < /dev/null &
-    DAEMON_PID=$!
-    echo "${DAEMON_PID}" > "${PID_FILE}"
-    echo "[gpu-queue] Started sequential GPU watcher daemon (PID ${DAEMON_PID})."
+    if command -v tmux >/dev/null 2>&1; then
+      tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+      tmux new-session -d -s "${TMUX_SESSION}" "cd '${REPO_ROOT}' && '${PYTHON_BIN}' '${QUEUE_SCRIPT}' $* >> '${LOG_FILE}' 2>&1"
+      sleep 1
+      DAEMON_PID="$(cat "${LOCK_FILE}" 2>/dev/null || true)"
+      if [[ -n "${DAEMON_PID}" ]]; then
+        echo "${DAEMON_PID}" > "${PID_FILE}"
+      fi
+      echo "[gpu-queue] Started sequential GPU watcher daemon in tmux session '${TMUX_SESSION}' (PID ${DAEMON_PID:-pending})."
+    else
+      setsid nohup "${PYTHON_BIN}" "${QUEUE_SCRIPT}" "$@" >> "${LOG_FILE}" 2>&1 < /dev/null &
+      DAEMON_PID=$!
+      echo "${DAEMON_PID}" > "${PID_FILE}"
+      echo "[gpu-queue] Started sequential GPU watcher daemon (PID ${DAEMON_PID})."
+    fi
     echo "[gpu-queue] Log file: ${LOG_FILE}"
     ;;
   status)
@@ -49,6 +61,9 @@ case "${ACTION}" in
     fi
     ;;
   stop)
+    if command -v tmux >/dev/null 2>&1; then
+      tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+    fi
     for F in "${LOCK_FILE}" "${PID_FILE}"; do
       if [[ -f "${F}" ]]; then
         P="$(cat "${F}" 2>/dev/null || true)"

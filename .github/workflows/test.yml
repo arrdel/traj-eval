@@ -1,0 +1,44 @@
+# Copyright (C) 2026 Lenovo
+# All Rights Reserved.
+# Lenovo Confidential Restricted.
+
+name: test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install package and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run unit test suite
+        run: python -m pytest -q
+
+      - name: Run CLI synthetic demo and fake Dream adapter smoke
+        run: |
+          python -m traj_eval demo --n-per-archetype 2
+          python experiments/run_dream_arcc_smoke.py --fake --n-items 2 \
+            --out-jsonl /tmp/fake_smoke.jsonl \
+            --out-ids /tmp/fake_ids.json \
+            --out-log /tmp/fake_log.json
+          python -m traj_eval run --input /tmp/fake_smoke.jsonl
