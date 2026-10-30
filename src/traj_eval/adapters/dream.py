@@ -272,20 +272,21 @@ def run_dream_arcc_smoke(
     import subprocess
 
     cfg = config or DEFAULT_SMOKE_CONFIG
-    # Lazy heavy imports: keep module import light.
-    import torch  # noqa: PLC0415 - lazy, cdr-gpu env only
-
-    from transformers import AutoModelForCausalLM, AutoTokenizer  # noqa: PLC0415
-
     if model is None or tokenizer is None:
+        # Lazy heavy imports: keep module import light and follow Dream's
+        # AutoModel registration (DreamConfig registers AutoModel, not
+        # AutoModelForCausalLM).
+        import torch  # noqa: PLC0415 - lazy, cdr-gpu env only
+        from transformers import AutoModel, AutoTokenizer  # noqa: PLC0415
+
         tok = AutoTokenizer.from_pretrained(cfg.model_id, trust_remote_code=True)
-        mdl = AutoModelForCausalLM.from_pretrained(
+        mdl = AutoModel.from_pretrained(
             cfg.model_id, trust_remote_code=True, torch_dtype=torch.bfloat16
         )
         # Dream generation lives on the model class; keep device handling simple.
         dev = device or ("cuda" if torch.cuda.is_available() else "cpu")
         try:
-            mdl = mdl.to(dev)
+            mdl = mdl.to(dev).eval()
         except Exception:
             pass
         model, tokenizer = mdl, tok
