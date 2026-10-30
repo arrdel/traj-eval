@@ -11,7 +11,8 @@ QUEUE_SCRIPT="${REPO_ROOT}/scripts/gpu_job_queue.py"
 PID_FILE="${REPO_ROOT}/.gpu_queue.pid"
 LOCK_FILE="${REPO_ROOT}/.gpu_queue.lock"
 LOG_FILE="${REPO_ROOT}/.gpu_queue_daemon.log"
-TMUX_SESSION="traj_eval_gpu_queue"
+REPO_HASH="$(printf '%s' "${REPO_ROOT}" | cksum | awk '{print $1}')"
+TMUX_SESSION="traj_eval_gpu_queue_${REPO_HASH}"
 
 ACTION="${1:-start}"
 shift || true
@@ -27,7 +28,16 @@ case "${ACTION}" in
     fi
     if command -v tmux >/dev/null 2>&1; then
       tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
-      tmux new-session -d -s "${TMUX_SESSION}" "cd '${REPO_ROOT}' && '${PYTHON_BIN}' '${QUEUE_SCRIPT}' $* >> '${LOG_FILE}' 2>&1"
+      QUOTED_ARGS=""
+      for arg in "$@"; do
+        QUOTED_ARGS+=" $(printf '%q' "${arg}")"
+      done
+      QUOTED_ROOT="$(printf '%q' "${REPO_ROOT}")"
+      QUOTED_PY="$(printf '%q' "${PYTHON_BIN}")"
+      QUOTED_SCRIPT="$(printf '%q' "${QUEUE_SCRIPT}")"
+      QUOTED_LOG="$(printf '%q' "${LOG_FILE}")"
+      tmux new-session -d -s "${TMUX_SESSION}" \
+        "cd ${QUOTED_ROOT} && ${QUOTED_PY} ${QUOTED_SCRIPT}${QUOTED_ARGS} >> ${QUOTED_LOG} 2>&1"
       sleep 1
       DAEMON_PID="$(cat "${LOCK_FILE}" 2>/dev/null || true)"
       if [[ -n "${DAEMON_PID}" ]]; then
@@ -46,7 +56,7 @@ case "${ACTION}" in
     if [[ -f "${LOCK_FILE}" ]]; then
       EXISTING_PID="$(cat "${LOCK_FILE}" 2>/dev/null || true)"
       if [[ -n "${EXISTING_PID}" ]] && kill -0 "${EXISTING_PID}" 2>/dev/null; then
-        echo "[gpu-queue] Daemon status: RUNNING (PID ${EXISTING_PID})"
+        echo "[gpu-queue] Daemon status: RUNNING (PID ${EXISTING_PID}, session=${TMUX_SESSION})"
       else
         echo "[gpu-queue] Daemon status: STOPPED (stale lock file)"
       fi
@@ -77,7 +87,12 @@ case "${ACTION}" in
     ;;
   install-cron)
     CRON_CMD="*/10 * * * * cd ${REPO_ROOT} && bash ${REPO_ROOT}/scripts/start_gpu_queue.sh start >/dev/null 2>&1"
-    (crontab -l 2>/dev/null | grep -v "start_gpu_queue.sh" || true; echo "${CRON_CMD}") | crontab -
+    EXISTING_CRON="$(crontab -l 2>/dev/null | grep -v "${REPO_ROOT}/scripts/start_gpu_queue.sh" || true)"
+    if [[ -n "${EXISTING_CRON}" ]]; then
+      printf "%s\n%s\n" "${EXISTING_CRON}" "${CRON_CMD}" | crontab -
+    else
+      printf "%s\n" "${CRON_CMD}" | crontab -
+    fi
     echo "[gpu-queue] Installed 10-minute cron watchdog for ${REPO_ROOT}/scripts/start_gpu_queue.sh"
     ;;
   *)

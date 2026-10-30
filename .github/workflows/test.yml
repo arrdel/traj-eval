@@ -34,11 +34,20 @@ jobs:
       - name: Run unit test suite
         run: python -m pytest -q
 
-      - name: Run CLI synthetic demo and fake Dream adapter smoke
+      - name: Run CLI synthetic demo and fake Dream adapter smoke with assertions
         run: |
           python -m traj_eval demo --n-per-archetype 2
           python experiments/run_dream_arcc_smoke.py --fake --n-items 2 \
             --out-jsonl /tmp/fake_smoke.jsonl \
             --out-ids /tmp/fake_ids.json \
             --out-log /tmp/fake_log.json
-          python -m traj_eval run --input /tmp/fake_smoke.jsonl
+          python -m traj_eval run \
+            --input /tmp/fake_smoke.jsonl \
+            --output /tmp/fake_results.json
+          python -c '
+          import json
+          res = json.load(open("/tmp/fake_results.json"))
+          assert res["aggregate"]["n_trajectories"] == 2, res["aggregate"]
+          assert res["aggregate"]["accuracy"] == 1.0, res["aggregate"]
+          assert [r["final_prediction"] for r in res["per_trajectory"]] == ["B", "B"], res["per_trajectory"]
+          '
