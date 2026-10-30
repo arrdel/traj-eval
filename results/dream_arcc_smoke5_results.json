@@ -1,0 +1,86 @@
+{
+  "per_trajectory": [
+    {
+      "id": "Mercury_7175875",
+      "final_prediction": "C",
+      "gold_answer": "C",
+      "correct": true,
+      "convergence_step": 3,
+      "convergence_index": 3,
+      "convergence_fraction": 0.01171875,
+      "flip_rate": 0.0,
+      "consistency": 1.0,
+      "longest_stable_run": 253,
+      "rationalization_score": 0.3953,
+      "n_steps": 256
+    },
+    {
+      "id": "Mercury_SC_409171",
+      "final_prediction": "B",
+      "gold_answer": "B",
+      "correct": true,
+      "convergence_step": 3,
+      "convergence_index": 3,
+      "convergence_fraction": 0.01171875,
+      "flip_rate": 0.0,
+      "consistency": 1.0,
+      "longest_stable_run": 253,
+      "rationalization_score": 0.3953,
+      "n_steps": 256
+    },
+    {
+      "id": "Mercury_SC_408547",
+      "final_prediction": "C",
+      "gold_answer": "C",
+      "correct": true,
+      "convergence_step": 3,
+      "convergence_index": 3,
+      "convergence_fraction": 0.01171875,
+      "flip_rate": 0.0,
+      "consistency": 1.0,
+      "longest_stable_run": 253,
+      "rationalization_score": 0.3953,
+      "n_steps": 256
+    },
+    {
+      "id": "Mercury_407327",
+      "final_prediction": "D",
+      "gold_answer": "D",
+      "correct": true,
+      "convergence_step": 3,
+      "convergence_index": 3,
+      "convergence_fraction": 0.01171875,
+      "flip_rate": 0.0,
+      "consistency": 1.0,
+      "longest_stable_run": 253,
+      "rationalization_score": 0.3953,
+      "n_steps": 256
+    },
+    {
+      "id": "MCAS_2006_9_44",
+      "final_prediction": "D",
+      "gold_answer": "D",
+      "correct": true,
+      "convergence_step": 4,
+      "convergence_index": 4,
+      "convergence_fraction": 0.015625,
+      "flip_rate": 0.0,
+      "consistency": 1.0,
+      "longest_stable_run": 252,
+      "rationalization_score": 0.3938,
+      "n_steps": 256
+    }
+  ],
+  "aggregate": {
+    "n_trajectories": 5,
+    "n_scored_for_accuracy": 5,
+    "accuracy": 1.0,
+    "mean_flip_rate": 0.0,
+    "mean_rationalization_score": 0.395,
+    "early_convergence_fraction": 1.0,
+    "mean_convergence_step": 3.2,
+    "median_convergence_step": 3.0,
+    "mean_convergence_fraction": 0.0125,
+    "median_convergence_fraction": 0.0117
+  }
+}
