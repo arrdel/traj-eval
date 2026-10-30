@@ -17,7 +17,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from traj_eval.metrics import answer_commitment_step, verdict_convergence_step
-from traj_eval.types import Trajectory
+from traj_eval.types import Trajectory, TrajectoryStep
 
 
 def group_advantages(rewards: np.ndarray, eps: float = 1e-8, normalize: bool = True) -> np.ndarray:
@@ -343,3 +343,120 @@ def post_convergence_credit_fraction(
         sum(w[i] for i, s in enumerate(steps) if s.step > conv_step)
     )
     return round(post_mass / total, 4)
+
+
+def train_trajectory_credit(
+    *,
+    scheme: str = "pre_convergence",
+    steps: int = 35,
+    horizon: int = 6,
+    batch_size: int = 24,
+    group_size: int = 6,
+    n_ctx: int = 6,
+    seed: int = 0,
+    lr: float = 0.8,
+    normalize: bool = True,
+) -> dict[str, float]:
+    """Multi-step denoising trajectory GRPO sandbox comparing credit-assignment rules.
+
+    Each rollout has ``horizon`` denoising steps (``t = 0 .. horizon - 1``):
+    * At ``t = 0``, the policy observes the true prompt context feature (one-hot
+      of ``ctx``) and samples a verdict ``a_0`` (which stabilizes as the
+      trajectory's verdict at ``t = 0``).
+    * At post-convergence steps ``t = 1 .. horizon - 1``, the verdict stays fixed
+      at ``a_0`` while the model elaborates post-verdict backfill tokens under
+      uninformative distractor context features and actions.
+
+    Outcome reward is ``1.0`` iff the final verdict equals ``ctx``.
+    * ``scheme="broadcast"`` (diffu-GRPO / d1) copies the outcome advantage
+      uniformly onto all ``horizon`` steps, injecting ``horizon - 1`` spurious
+      post-convergence updates per rollout.
+    * ``scheme="pre_convergence"`` (Paper 1 §6) uses :func:`trajectory_step_weights`
+      to zero out credit after ``verdict_convergence_step``, updating only on the
+      step(s) that determined the verdict.
+    """
+    rng = np.random.default_rng(seed)
+    policy = AnswerPolicy(n_features=n_ctx, n_actions=n_ctx, rng=rng)
+
+    # Canonical early-stabilized trajectory template (verdict converges at step 0,
+    # followed by horizon - 1 post-convergence backfill steps).
+    template_traj = Trajectory(
+        id="template",
+        prompt="q",
+        gold_answer="0",
+        steps=[
+            TrajectoryStep(
+                step=t,
+                prediction="0",
+                confidence=0.3 if t == 0 else 0.95,
+                answer_committed=(t >= 0),
+            )
+            for t in range(horizon)
+        ],
+    )
+    step_w = trajectory_step_weights(template_traj, scheme=scheme)
+
+    for _ in range(steps):
+        ctx = rng.integers(0, n_ctx, size=batch_size)
+        true_feat = np.zeros((batch_size, n_ctx), dtype=np.float64)
+        true_feat[np.arange(batch_size), ctx] = 1.0
+
+        probs_0 = policy.probs(true_feat)
+        verdict_actions = np.vstack(
+            [
+                np.array([rng.choice(n_ctx, p=probs_0[i]) for i in range(batch_size)])
+                for _ in range(group_size)
+            ]
+        )  # (G, B)
+        rewards = (verdict_actions == ctx[None, :]).astype(np.float64)
+        adv_group = group_advantages(rewards.T, normalize=normalize).reshape(-1)  # (B * G,)
+
+        all_feats: list[np.ndarray] = []
+        all_acts: list[np.ndarray] = []
+        all_advs: list[np.ndarray] = []
+        all_old_p: list[np.ndarray] = []
+
+        for t in range(horizon):
+            w_t = float(step_w[t])
+            if w_t <= 0.0:
+                continue
+            if t == 0:
+                f_t = np.repeat(true_feat, group_size, axis=0)
+                a_t = verdict_actions.T.reshape(-1)
+                p_t = np.take_along_axis(probs_0, verdict_actions.T, axis=1).reshape(-1)
+            else:
+                # Post-convergence steps condition on the same prompt feature true_feat
+                # while emitting post-verdict rationale/EOS backfill tokens (shifted away
+                # from the answer token). Broadcasting outcome advantage onto these steps
+                # reinforces non-answer tokens on the prompt context.
+                f_t = np.repeat(true_feat, group_size, axis=0)
+                a_t = (verdict_actions.T.reshape(-1) + (t % (n_ctx - 1)) + 1) % n_ctx
+                probs_t = policy.probs(f_t)
+                p_t = probs_t[np.arange(batch_size * group_size), a_t]
+
+            all_feats.append(f_t)
+            all_acts.append(a_t)
+            all_advs.append(adv_group * w_t)
+            all_old_p.append(p_t)
+
+        if all_feats:
+            grpo_step(
+                policy,
+                np.vstack(all_feats),
+                np.concatenate(all_acts),
+                np.concatenate(all_advs),
+                np.concatenate(all_old_p),
+                lr=lr,
+            )
+
+    eval_ctx = np.arange(n_ctx)
+    eval_feat = np.eye(n_ctx)
+    eval_probs = policy.probs(eval_feat)
+    greedy = eval_probs.argmax(axis=1)
+    return {
+        "greedy_accuracy": float((greedy == eval_ctx).mean()),
+        "target_prob_mean": float(eval_probs[eval_ctx, eval_ctx].mean()),
+        "post_convergence_credit_fraction": post_convergence_credit_fraction(
+            template_traj, scheme=scheme
+        ),
+    }

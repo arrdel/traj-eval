@@ -9,6 +9,7 @@ from experiments.grpo_minimal import (
     post_convergence_credit_fraction,
     sampled_kl,
     train_matching,
+    train_trajectory_credit,
     trajectory_step_weights,
 )
 from traj_eval.types import Trajectory, TrajectoryStep
@@ -95,3 +96,15 @@ def test_trajectory_step_weights_and_post_convergence_credit():
     assert w_dtca[3] == 0.0
     assert w_dtca[4] == 0.0
     assert post_convergence_credit_fraction(t, scheme="dtca") == 0.0
+
+
+def test_pre_convergence_credit_beats_broadcast_under_post_verdict_backfill():
+    # On early-stabilized trajectories with 5 post-convergence backfill steps (horizon=6),
+    # pre_convergence assigns 0% post-convergence credit and drives target answer probability
+    # and accuracy higher than broadcast diffu-GRPO (which assigns 83.33% of credit to post-verdict backfill).
+    res_pre = train_trajectory_credit(scheme="pre_convergence", steps=35, horizon=6, seed=0)
+    res_broad = train_trajectory_credit(scheme="broadcast", steps=35, horizon=6, seed=0)
+    assert res_pre["post_convergence_credit_fraction"] == 0.0
+    assert res_broad["post_convergence_credit_fraction"] == pytest.approx(5 / 6, abs=1e-3)
+    assert res_pre["greedy_accuracy"] == 1.0
+    assert res_pre["target_prob_mean"] > res_broad["target_prob_mean"] + 0.25

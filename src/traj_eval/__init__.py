@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from traj_eval.metrics import (
     answer_commitment_step,
+    check_reasoning_smoke_gate,
+    compare_conditions,
     cotsel_selection_gap,
     coverage_accuracy_decomposition,
     early_convergence_fraction,
@@ -54,6 +56,8 @@ __all__ = [
     "stratified_evaluation",
     "paired_bootstrap_delta",
     "pass_at_k_metrics",
+    "check_reasoning_smoke_gate",
+    "compare_conditions",
     "trajectory_accuracy",
     "early_convergence_fraction",
     "evaluate_trajectories",

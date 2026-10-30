@@ -14,7 +14,11 @@ import sys
 from pathlib import Path
 
 from traj_eval.io import load_trajectories, save_results, trajectories_to_dicts
-from traj_eval.metrics import evaluate_trajectories
+from traj_eval.metrics import (
+    check_reasoning_smoke_gate,
+    compare_conditions,
+    evaluate_trajectories,
+)
 from traj_eval.synthetic import generate_synthetic_trajectories
 
 
@@ -25,10 +29,21 @@ def _print_summary(results: dict) -> None:
     print(f"Accuracy (final):        {agg['accuracy']:.4f}")
     print(f"Mean flip rate:          {agg['mean_flip_rate']:.4f}")
     print(f"Mean rationalization:    {agg['mean_rationalization_score']:.4f}")
+    if "mean_early_factor" in agg:
+        print(
+            f"  [components] early={agg['mean_early_factor']:.4f} "
+            f"post_change={agg['mean_post_change_rate']:.4f} "
+            f"len_growth={agg['mean_length_growth']:.4f} "
+            f"gated={agg.get('mean_gated_rationalization_score', 0.0):.4f}"
+        )
     print(f"Early convergence frac:  {agg['early_convergence_fraction']:.4f}")
     print(f"Mean convergence step:   {agg['mean_convergence_step']:.2f}")
     print(f"Median convergence step: {agg['median_convergence_step']:.2f}")
     print(f"Mean convergence frac:   {agg['mean_convergence_fraction']:.4f}")
+    if agg.get("mean_answer_commitment_step") is not None:
+        print(f"Mean T_commit step:      {agg['mean_answer_commitment_step']:.2f}")
+        print(f"Mean lag (T_comm-T_stab):{agg['mean_stability_commitment_lag']:.2f}")
+        print(f"Mean unwritten @ T_stab: {agg['mean_unwritten_reasoning_at_convergence']:.4f}")
     print("\nPer-trajectory:")
     header = f"{'id':<20} {'final':<8} {'gold':<6} {'corr':<5} {'conv':<5} {'flip':<6} {'rat':<6} {'steps':<5}"
     print(header)
@@ -51,9 +66,48 @@ def _cmd_run(args: argparse.Namespace) -> int:
         return 2
     results = evaluate_trajectories(trajs)
     _print_summary(results)
+    if getattr(args, "check_reasoning_gate", False):
+        gate = check_reasoning_smoke_gate(trajs)
+        results["reasoning_smoke_gate"] = gate
+        print(f"Reasoning gate:          {gate['status']}")
     if args.output:
         save_results(results, args.output)
         print(f"Saved JSON results to {args.output}")
+    return 0
+
+
+def _cmd_compare(args: argparse.Namespace) -> int:
+    try:
+        base_trajs = load_trajectories(args.base)
+        target_trajs = load_trajectories(args.target)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+    comp = compare_conditions(
+        base_trajs,
+        target_trajs,
+        base_label=args.base_label,
+        target_label=args.target_label,
+    )
+    b_lbl = comp["base_label"]
+    t_lbl = comp["target_label"]
+    b_agg = comp["base_aggregate"]
+    t_agg = comp["target_aggregate"]
+    print(f"\n=== traj-eval comparison ({b_lbl} vs {t_lbl}) ===")
+    print(f"{'Metric':<28} {b_lbl:>12} {t_lbl:>12} {'Delta':>12}")
+    print("-" * 66)
+    print(
+        f"{'Accuracy':<28} {b_agg['accuracy']:>12.4f} {t_agg['accuracy']:>12.4f} "
+        f"{comp['accuracy_delta']['delta']:>+12.4f}"
+    )
+    for k, row in comp["rationalization_components_side_by_side"].items():
+        print(
+            f"{'rat.' + k:<28} {row[b_lbl]:>12.4f} {row[t_lbl]:>12.4f} {row['delta']:>+12.4f}"
+        )
+    print()
+    if args.output:
+        save_results(comp, args.output)
+        print(f"Saved comparison JSON to {args.output}")
     return 0
 
 
@@ -91,7 +145,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_run = sub.add_parser("run", help="Evaluate trajectories from a JSONL/JSON file.")
     p_run.add_argument("--input", required=True, help="Input .jsonl or .json file")
     p_run.add_argument("--output", default=None, help="Output JSON file (optional)")
+    p_run.add_argument(
+        "--check-reasoning-gate",
+        action="store_true",
+        help="Validate CURSOR_FOLLOWUP_2026-10-29 §4 reasoning smoke gate",
+    )
     p_run.set_defaults(func=_cmd_run)
+
+    p_cmp = sub.add_parser(
+        "compare",
+        help="Compare two trajectory JSONL/JSON files side by side (e.g. direct vs reasoning).",
+    )
+    p_cmp.add_argument("--base", required=True, help="Base condition .jsonl or .json file")
+    p_cmp.add_argument("--target", required=True, help="Target condition .jsonl or .json file")
+    p_cmp.add_argument("--base-label", default="direct", help="Label for base condition")
+    p_cmp.add_argument("--target-label", default="reasoning", help="Label for target condition")
+    p_cmp.add_argument("--output", default=None, help="Output comparison JSON file (optional)")
+    p_cmp.set_defaults(func=_cmd_compare)
 
     p_demo = sub.add_parser("demo", help="Run evaluation on synthetic trajectories.")
     p_demo.add_argument("--n-per-archetype", type=int, default=5)

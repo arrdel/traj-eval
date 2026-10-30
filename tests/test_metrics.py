@@ -4,6 +4,8 @@ import pytest
 
 from traj_eval.metrics import (
     answer_commitment_step,
+    check_reasoning_smoke_gate,
+    compare_conditions,
     cotsel_selection_gap,
     coverage_accuracy_decomposition,
     early_convergence_fraction,
@@ -387,3 +389,71 @@ def test_paired_bootstrap_delta_and_pass_at_k():
     assert pk["pass_at_k"]["pass@1"] == pytest.approx(0.25)
     assert pk["pass_at_k"]["pass@4"] == pytest.approx(1.0)
     assert pk["mean_unique_answer_ratio"] == pytest.approx(1.0)
+
+
+def test_reasoning_smoke_gate_and_compare_conditions(tmp_path):
+    # Degenerate direct-answer trace without commitment clocks or reasoning text fails gate.
+    direct = _traj(["C"] * 4, gold="C", reasoning=["Answer: C"] * 4, tid="q1")
+    gate_fail = check_reasoning_smoke_gate([direct])
+    assert gate_fail["passed"] is False
+    assert gate_fail["status"].startswith("reasoning smoke failed:")
+
+    # Reasoning trajectory with commitment clocks populated and post-verdict text changes passes gate.
+    reas = Trajectory(
+        id="q1",
+        prompt="Q?",
+        gold_answer="C",
+        steps=[
+            TrajectoryStep(
+                step=0,
+                prediction=None,
+                reasoning_text="",
+                answer_committed=False,
+                committed_reasoning_fraction=0.0,
+            ),
+            TrajectoryStep(
+                step=1,
+                prediction="C",
+                reasoning_text="Answer: C",
+                answer_committed=True,
+                committed_reasoning_fraction=0.25,
+            ),
+            TrajectoryStep(
+                step=2,
+                prediction="C",
+                reasoning_text="Faster rotation shortens the day. Answer: C",
+                answer_committed=True,
+                committed_reasoning_fraction=0.75,
+            ),
+            TrajectoryStep(
+                step=3,
+                prediction="C",
+                reasoning_text="Faster rotation shortens the solar day. Answer: C",
+                answer_committed=True,
+                committed_reasoning_fraction=1.0,
+            ),
+        ],
+    )
+    gate_pass = check_reasoning_smoke_gate([reas])
+    assert gate_pass["passed"] is True
+    assert gate_pass["status"] == "reasoning smoke clean"
+
+    comp = compare_conditions([direct], [reas], base_label="direct", target_label="reasoning")
+    sbs = comp["rationalization_components_side_by_side"]
+    assert sbs["post_change_rate"]["direct"] == 0.0
+    assert sbs["post_change_rate"]["reasoning"] > 0.0
+    assert sbs["gated_score"]["direct"] == 0.0
+    assert sbs["gated_score"]["reasoning"] > 0.0
+
+    # Test CLI compare subcommand
+    import json
+    from traj_eval.cli import main
+    from traj_eval.io import trajectories_to_dicts
+
+    p_dir = tmp_path / "direct.jsonl"
+    p_reas = tmp_path / "reas.jsonl"
+    p_out = tmp_path / "cmp.json"
+    p_dir.write_text(json.dumps(trajectories_to_dicts([direct])[0]) + "\n")
+    p_reas.write_text(json.dumps(trajectories_to_dicts([reas])[0]) + "\n")
+    assert main(["compare", "--base", str(p_dir), "--target", str(p_reas), "--output", str(p_out)]) == 0
+    assert p_out.exists()

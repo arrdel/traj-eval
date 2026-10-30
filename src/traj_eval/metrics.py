@@ -885,3 +885,171 @@ def evaluate_trajectories(trajectories: list[Trajectory]) -> dict[str, Any]:
         "mean_order_gap": round(_mean(order_gaps), 4) if order_gaps else None,
     }
     return {"per_trajectory": per, "aggregate": aggregate}
+
+
+def check_reasoning_smoke_gate(trajectories: Sequence[Trajectory]) -> dict[str, Any]:
+    """Validate the reasoning-condition smoke gate from ``docs/CURSOR_FOLLOWUP_2026-10-29.md`` §4.
+
+    Gate requirements:
+    1. Commitment fields (``T_commit``, ``stability_commitment_lag``, and
+       ``unwritten_reasoning_at_convergence``) must be non-null on decided
+       trajectories.
+    2. At least some trajectories must contain real post-verdict or
+       pre-verdict reasoning text (``post_change_rate > 0`` on some items, or
+       non-trivial rationale text beyond a bare ``"Answer: <letter>"`` stub).
+    """
+    trajs = list(trajectories)
+    if not trajs:
+        return {
+            "passed": False,
+            "status": "reasoning smoke failed: empty trajectory list",
+            "n_trajectories": 0,
+            "n_decided": 0,
+            "n_with_commitment_clocks": 0,
+            "n_with_post_change": 0,
+            "n_with_pre_verdict_rationale": 0,
+            "commitment_clocks_populated": False,
+            "has_reasoning_activity": False,
+        }
+
+    decided = [t for t in trajs if t.steps and t.final_prediction is not None]
+    n_with_comm = sum(
+        1
+        for t in decided
+        if (
+            answer_commitment_step(t) is not None
+            and stability_commitment_lag(t) is not None
+            and unwritten_reasoning_at_convergence(t) is not None
+        )
+    )
+    n_with_post_change = sum(
+        1 for t in decided if rationalization_components(t)["post_change_rate"] > 0.0
+    )
+    n_with_pre_rationale = 0
+    for t in decided:
+        idx = _convergence_index(t)
+        if idx is not None and t.steps:
+            text_at_conv = t.steps[idx].reasoning_text.strip()
+            # More than a bare "Answer: X" stub (<= 15 chars).
+            if len(text_at_conv) > 15:
+                n_with_pre_rationale += 1
+
+    comm_ok = len(decided) > 0 and n_with_comm == len(decided)
+    reasoning_ok = (n_with_post_change > 0) or (n_with_pre_rationale > 0)
+    reasons: list[str] = []
+    if not comm_ok:
+        reasons.append(
+            f"commitment clocks populated on {n_with_comm}/{len(decided)} decided trajectories"
+        )
+    if not reasoning_ok:
+        reasons.append(
+            "traces collapsed to bare answer stub without post-verdict or pre-verdict rationale"
+        )
+    passed = bool(comm_ok and reasoning_ok)
+    status = (
+        "reasoning smoke clean"
+        if passed
+        else f"reasoning smoke failed: {'; '.join(reasons)}"
+    )
+    return {
+        "passed": passed,
+        "status": status,
+        "n_trajectories": len(trajs),
+        "n_decided": len(decided),
+        "n_with_commitment_clocks": n_with_comm,
+        "n_with_post_change": n_with_post_change,
+        "n_with_pre_verdict_rationale": n_with_pre_rationale,
+        "commitment_clocks_populated": comm_ok,
+        "has_reasoning_activity": reasoning_ok,
+    }
+
+
+def compare_conditions(
+    base_trajectories: Sequence[Trajectory],
+    target_trajectories: Sequence[Trajectory],
+    *,
+    base_label: str = "base",
+    target_label: str = "target",
+    n_boot: int = 1000,
+    seed: int = 42,
+) -> dict[str, Any]:
+    """Compare two trajectory conditions side by side (e.g. direct vs. reasoning, or base vs. forced).
+
+    Reports:
+    * Full ``evaluate_trajectories`` aggregate for each condition.
+    * Side-by-side rationalization components (``early_factor``,
+      ``post_change_rate``, ``length_growth``, ``score``, ``gated_score``) so
+      the scalar is never reported alone (``docs/CURSOR_FOLLOWUP_2026-10-29.md`` §4).
+    * :func:`forced_deliberation_delta` and :func:`coverage_accuracy_decomposition`.
+    * :func:`paired_bootstrap_delta` across accuracy, flip rate,
+      rationalization score, gated rationalization score, and convergence
+      fraction.
+    """
+    base_list = list(base_trajectories)
+    target_list = list(target_trajectories)
+    base_eval = evaluate_trajectories(base_list)
+    target_eval = evaluate_trajectories(target_list)
+    b_agg = base_eval["aggregate"]
+    t_agg = target_eval["aggregate"]
+
+    side_by_side_components = {
+        "early_factor": {
+            base_label: b_agg["mean_early_factor"],
+            target_label: t_agg["mean_early_factor"],
+            "delta": round(t_agg["mean_early_factor"] - b_agg["mean_early_factor"], 4),
+        },
+        "post_change_rate": {
+            base_label: b_agg["mean_post_change_rate"],
+            target_label: t_agg["mean_post_change_rate"],
+            "delta": round(t_agg["mean_post_change_rate"] - b_agg["mean_post_change_rate"], 4),
+        },
+        "length_growth": {
+            base_label: b_agg["mean_length_growth"],
+            target_label: t_agg["mean_length_growth"],
+            "delta": round(t_agg["mean_length_growth"] - b_agg["mean_length_growth"], 4),
+        },
+        "score": {
+            base_label: b_agg["mean_rationalization_score"],
+            target_label: t_agg["mean_rationalization_score"],
+            "delta": round(
+                t_agg["mean_rationalization_score"] - b_agg["mean_rationalization_score"], 4
+            ),
+        },
+        "gated_score": {
+            base_label: b_agg["mean_gated_rationalization_score"],
+            target_label: t_agg["mean_gated_rationalization_score"],
+            "delta": round(
+                t_agg["mean_gated_rationalization_score"]
+                - b_agg["mean_gated_rationalization_score"],
+                4,
+            ),
+        },
+    }
+
+    bootstrap = {
+        m: paired_bootstrap_delta(
+            base_list, target_list, metric=m, n_boot=n_boot, seed=seed
+        )
+        for m in (
+            "accuracy",
+            "flip_rate",
+            "rationalization_score",
+            "gated_rationalization_score",
+            "convergence_fraction",
+        )
+    }
+
+    return {
+        "base_label": base_label,
+        "target_label": target_label,
+        "base_aggregate": b_agg,
+        "target_aggregate": t_agg,
+        "rationalization_components_side_by_side": side_by_side_components,
+        "accuracy_delta": forced_deliberation_delta(
+            b_agg["accuracy"], t_agg["accuracy"]
+        ),
+        "coverage_decomposition": coverage_accuracy_decomposition(
+            base_list, target_list
+        ),
+        "paired_bootstrap": bootstrap,
+    }
