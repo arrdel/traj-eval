@@ -88,11 +88,11 @@ Malformed files raise `ValueError` with a clear message instead of silently drop
 | Unwritten reasoning at convergence | `unwritten_reasoning_at_convergence` | [0, 1] or None | `1 - committed_reasoning_fraction` at the verdict convergence step (`T_stab`). None if not logged. |
 | Commitment order gap | `order_gap` | [-1, 1] or None | `(T_commit(ans) - T_median_commit(reason)) / n` (Yeom et al. 2026). Negative values indicate answer-first commitment. |
 | Three-clock disagreement | `three_clock_disagreement` | dict | Flags trajectories where verdict stability (`T_stab`), answer commitment (`T_commit`), and rationale completion/edits disagree (`in_disagreement_slice`). |
-| Stable-but-wrong lock-in | `is_sbw_lockin` | bool or None | True when a trajectory converges within the first 20% of steps (`threshold` configurable) to an incorrect final answer (Zhao et al., LOCKR 2026). |
+| Stable-but-wrong lock-in | `is_sbw_lockin` | bool or None | **Experimental (unvalidated on real checkpoints).** True when a trajectory converges within the first 20% of steps (`threshold` configurable) to an incorrect final answer (inspired by Zhao et al., LOCKR 2026). |
 | Coverage–accuracy decomposition | `coverage_accuracy_decomposition` | dict | Symmetric Two-Clocks decomposition of accuracy delta into `coverage_effect` vs. `conditional_accuracy_effect` (Kim & Choi 2026). |
-| CoTsel selection gap | `cotsel_selection_gap`, `stratified_evaluation` | dict | Correctness-conditioning selection gap `Cov(M, C) / P(C=1)` (Pan & Pan 2026) and stratified summaries across `all`, `correct`, `incorrect`, and `undecided`. |
+| CoTsel selection gap | `cotsel_selection_gap`, `stratified_evaluation` | dict | **Experimental (unvalidated on real checkpoints).** Correctness-conditioning selection gap `Cov(M, C) / P(C=1)` (inspired by Pan & Pan 2026) and stratified summaries across `all`, `correct`, `incorrect`, and `undecided`. |
 | Paired bootstrap delta | `paired_bootstrap_delta` | dict | Paired bootstrap confidence interval for `target - base` over matched question IDs (Yeom et al. 2026). |
-| Pass@k & diversity | `pass_at_k_metrics` | dict | Unbiased `Pass@k` estimator and unique answer/rationale ratios across multiple rollouts per prompt (Ni et al. 2026). |
+| Pass@k & diversity | `pass_at_k_metrics` | dict | **Experimental (unvalidated on real checkpoints).** Unbiased `Pass@k` estimator and unique answer/rationale ratios across multiple rollouts per prompt (inspired by Ni et al. 2026). |
 | Early convergence fraction | `early_convergence_fraction` | [0, 1] | Fraction of trajectories converging within the first 20% of steps (threshold configurable). |
 | Aggregate | `evaluate_trajectories` | dict | Per-trajectory results + aggregate: accuracy, mean/median convergence step and fraction, mean flip rate, mean rationalization score, early convergence fraction. |
 

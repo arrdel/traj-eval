@@ -11,3 +11,7 @@ venv/
 *.ipynb_checkpoints
 .DS_Store
 results.json
+.gpu_queue.lock
+.gpu_queue.pid
+.gpu_queue_daemon.log
+results/gpu_queue_state.json

@@ -113,6 +113,8 @@ MCAS_2006_9_44       D        D      Y     4     0.000  0.394  256
 
 ### Pasted aggregate JSON (`results/dream_arcc_smoke5_results.json`)
 
+*(Note: re-scored from the Oct 29 `7831ea7` JSONL to include the decomposed rationalization components, `mean_gated_rationalization_score`, and coverage fields; original accuracy, flip rate, and convergence numbers are unchanged, and `results/dream_arcc_smoke5_run_log.json` was not modified.)*
+
 ```json
 {
   "n_trajectories": 5,
@@ -144,12 +146,12 @@ MCAS_2006_9_44       D        D      Y     4     0.000  0.394  256
 
 Under the direct-answer prompt template in `results/dream_arcc_smoke5_input.json` (`Respond in the form "Answer: <letter>" with the letter of the correct option.`), Dream unmasks `'Answer'` -> `'Answer:'` -> `'Answer: <letter>'` in steps 1–4 and fills the remaining ~252 canvas positions with EOS tokens (stripped by `skip_special_tokens=True`). Because no post-convergence rationale text is written (`mean_post_change_rate = 0.0`, `mean_length_growth = 0.0`, `mean_gated_rationalization_score = 0.0`), the additive heuristic `rationalization_score` equals `0.4 * early_factor` (~0.395) purely from early convergence relative to the 256-step canvas.
 
-## Pre-registered next runs (ready for next GPU window with >=25 GB free)
+## Pre-registered Gated Sequence (`docs/CURSOR_FOLLOWUP_2026-10-30.md` §§5–6)
 
-All input files and fixed ID lists are committed before any accuracy is observed (following `docs/CURSOR_FOLLOWUP_2026-10-29.md` §4):
+This list is a **gated pre-registration sequence**, executed one stage at a time by `scripts/gpu_job_queue.py` whenever a GPU with `>= 25 GB` free VRAM is available. If Stage 1 fails its reasoning gate (`check_reasoning_smoke_gate`), the queue commits/pushes the diagnostic failure and halts immediately.
 
-1. **Dream-7B reasoning-condition 5-item ARC-C smoke (THE ONLY NEXT GPU EXPERIMENT, gated on non-null commitment fields + real reasoning text):**
-   - Inputs & IDs: `results/dream_arcc_smoke5_reasoning_input.json`, `results/dream_arcc_smoke5_reasoning_ids.json` (closing line: `Think step by step, then give your final answer in the form "Answer: <letter>".`)
+1. **Stage 1 — Dream-7B canonical reasoning-condition 5-item ARC-C smoke (GATED):**
+   - Canonical prompt file: `results/dream_arcc_smoke5_reasoning_input.json`, `results/dream_arcc_smoke5_reasoning_ids.json` (closing line: `Think step by step, then give your final answer in the form "Answer: <letter>".` — distinct from the 2–3 sentence CoT variant in `dream_arcc_cot_smoke5_input.json`).
    - Command:
      ```bash
      CUDA_VISIBLE_DEVICES=<card> /home/achinda1/miniconda3/envs/cdr-gpu/bin/python experiments/run_dream_arcc_smoke.py \
@@ -158,28 +160,14 @@ All input files and fixed ID lists are committed before any accuracy is observed
        --out-ids results/dream_arcc_smoke5_reasoning_ids.json \
        --out-log results/dream_arcc_smoke5_reasoning_run_log.json
      ```
-2. **Dream-7B pre-registered forced-deliberation smoke (`K=64` EOS-suppressed steps):**
-   - Pre-registered parameter: `--force-deliberation-steps 64` on the 5 ARC-C smoke items (`results/dream_arcc_smoke5_input.json`), scored via `forced_deliberation_delta(base_accuracy, forced_accuracy)`.
-   - Command:
-     ```bash
-     CUDA_VISIBLE_DEVICES=<card> /home/achinda1/miniconda3/envs/cdr-gpu/bin/python experiments/run_dream_arcc_smoke.py \
-       --items results/dream_arcc_smoke5_input.json \
-       --force-deliberation-steps 64 \
-       --out-jsonl results/dream_arcc_forced64_smoke5.jsonl \
-       --out-ids results/dream_arcc_smoke5_ids.json \
-       --out-log results/dream_arcc_forced64_smoke5_run_log.json
-     ```
-3. **Dream-7B GSM8K 5-item smoke (`extract_gsm8k_verdict` + exemplar stripping):**
+2. **Stage 2 — Dream-7B 64-item ARC-C paired direct + canonical reasoning suites (only after Stage 1 gate passes):**
+   - Pre-registered IDs: `results/arcc_smoke64_ids.json`
+   - Direct input: `results/arcc_smoke64_direct_input.json`
+   - Canonical reasoning input: `results/arcc_smoke64_reasoning_input.json` (uses the exact same closing line as Stage 1: `Think step by step, then give your final answer in the form "Answer: <letter>".`).
+3. **Stage 3 — Dream-7B GSM8K 5-item numeric smoke (`extract_gsm8k_verdict` + exemplar stripping):**
    - Inputs & IDs: `results/dream_gsm8k_smoke5_input.json`, `results/dream_gsm8k_smoke5_ids.json`
-   - Command:
-     ```bash
-     CUDA_VISIBLE_DEVICES=<card> /home/achinda1/miniconda3/envs/cdr-gpu/bin/python experiments/run_dream_arcc_smoke.py \
-       --task gsm8k \
-       --items results/dream_gsm8k_smoke5_input.json \
-       --out-jsonl results/dream_gsm8k_smoke5.jsonl \
-       --out-ids results/dream_gsm8k_smoke5_ids.json \
-       --out-log results/dream_gsm8k_smoke5_run_log.json
-     ```
-4. **64-item ARC-C (direct + CoT) and 64-item GSM8K across Dream-7B, LLaDA-8B-Instruct, LLaDA-1.5:**
-   - Pre-registered IDs: `results/arcc_smoke64_ids.json` (`results/arcc_smoke64_direct_input.json`, `results/arcc_smoke64_cot_input.json`) and `results/smoke64_ids.json` (`results/gsm8k_smoke64_input.json`).
-   - Run with `--model-family dream|llada-instruct|llada-1.5`.
+4. **Stage 4 — Dream-7B EOS-suppression K=64 5-item smoke (`--force-deliberation-steps 64`, named `EOS-suppression K=64` per `docs/CURSOR_FOLLOWUP_2026-10-30.md` §3c, separate from the post-stability protocol):**
+   - Inputs & IDs: `results/dream_arcc_smoke5_input.json`, `results/dream_arcc_smoke5_ids.json`
+   - Outputs: `results/dream_arcc_eos_suppression_k64_smoke5.{jsonl,run_log.json,results.json}`
+5. **Stage 5 — LLaDA-8B-Instruct and LLaDA-1.5 5-item ARC-C validation smokes (direct + canonical reasoning):**
+   - Run with `--model-family llada-instruct|llada-1.5` before any 64-item LLaDA runs.
