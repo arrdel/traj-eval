@@ -50,6 +50,12 @@ def test_extract_verdict_prefix_precedence():
     assert extract_verdict("First step. A physicist conducts three trials.") is None
     # Linking verb "A is ..." still counts as option letter A.
     assert extract_verdict("A is the correct option.") == "A"
+    # Word-boundary regression (PR #7 Mercury_7175875): "Provide the final answer\nAnswer: C"
+    # must NOT match the "A" in "Answer" after "final answer".
+    assert extract_verdict("Step 4: Provide the final answer\nAnswer: C") == "C"
+    assert extract_verdict("Step 4: Provide the final answer\nAnswer:") is None
+    assert extract_verdict("Step 3: Choose the most likely option\nBased on the analysis") is None
+    assert extract_verdict("Option A: wrong.\nOption B: wrong.\n\nFinal answer: C") == "C"
 
 
 def test_decode_strips_masks_and_prompt():

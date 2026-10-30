@@ -70,14 +70,18 @@ from traj_eval.types import Trajectory, TrajectoryStep
 DREAM_MODEL_ID = "Dream-org/Dream-v0-Instruct-7B"
 
 # Answer-prefix patterns take precedence over a bare standalone letter.
-# We return the LAST match: the most recent explicit answer statement.
+# Require same-line whitespace/colon ([ \t:]*) and a word boundary (\b([A-D])\b)
+# around the option letter so headings like "Provide the final answer\nAnswer: C"
+# or "Choose the most likely option\nBased on..." never match the first letter
+# of the next word ("Answer" -> "A", "Based" -> "B").
+# Across all prefix patterns, we return the match that appears LAST in text order.
 _ANSWER_PREFIX_RES = [
-    re.compile(r"\\boxed\{\s*\(?\s*([A-D])\s*\)?\s*\}", re.IGNORECASE),
-    re.compile(r"final\s+answer\s*(?:is\s*)?[:\s]*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
-    re.compile(r"answer\s+is\s*[:\s]*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
-    re.compile(r"\banswer\s*:\s*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
-    re.compile(r"option\s*[:\s]*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
-    re.compile(r"choice\s+is\s*[:\s]*\(?\s*([A-D])\s*\)?", re.IGNORECASE),
+    re.compile(r"\\boxed\{\s*\(?\s*\b([A-D])\b\s*\)?\s*\}", re.IGNORECASE),
+    re.compile(r"final\s+answer\s*(?:is\s*)?[ \t:]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
+    re.compile(r"(?:correct\s+)?answer\s+is[ \t:]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
+    re.compile(r"\banswer[ \t]*:[ \t]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
+    re.compile(r"\boption[ \t:]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
+    re.compile(r"\bchoice\s+is[ \t:]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
 ]
 # Clause-initial English indefinite article "A <lowercase_word>" (excluding
 # linking verbs like "A is/was/fits/matches") so partial CoT sentences such
@@ -96,18 +100,23 @@ def extract_verdict(text: str) -> str | None:
 
     Precedence: answer-prefix patterns (``\\boxed{B}``, ``final answer: C``,
     ``answer is (B)``, ``Answer: A``, ``option B``) win over a bare
-    standalone letter, and the last such match wins. Otherwise the last
-    standalone ``\\b([A-D])\\b`` match wins after stripping clause-initial
-    English indefinite articles (``"A planet..."``). ``None`` for empty /
-    all-mask text.
+    standalone letter, and the last such match in text order wins.
+    Otherwise the last standalone ``\\b([A-D])\\b`` match wins after
+    stripping clause-initial English indefinite articles (``"A planet..."``).
+    ``None`` for empty / all-mask text.
     """
     if not text or not text.strip():
         return None
+    best_pos: tuple[int, int] | None = None
+    best_letter: str | None = None
     for pat in _ANSWER_PREFIX_RES:
-        matches = pat.findall(text)
-        if matches:
-            # findall returns the captured group; last wins.
-            return str(matches[-1]).upper()
+        for m in pat.finditer(text):
+            pos = (m.end(), m.start())
+            if best_pos is None or pos >= best_pos:
+                best_pos = pos
+                best_letter = str(m.group(1)).upper()
+    if best_letter is not None:
+        return best_letter
     scrubbed = _ARTICLE_A_RE.sub(r"\1\2", text)
     matches = _STANDALONE_LETTER_RE.findall(scrubbed)
     if matches:
