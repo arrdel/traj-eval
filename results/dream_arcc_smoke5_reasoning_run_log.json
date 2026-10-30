@@ -1,0 +1,86 @@
+{
+  "config": {
+    "model_id": "Dream-org/Dream-v0-Instruct-7B",
+    "task": "arcc",
+    "max_new_tokens": 256,
+    "steps": 256,
+    "temperature": 0.2,
+    "top_p": 0.95,
+    "alg": "entropy",
+    "alg_temp": 0.0,
+    "force_deliberation_steps": 0,
+    "frontier_width": null,
+    "n_items": 5,
+    "out_jsonl": "results/dream_arcc_smoke5_reasoning.jsonl",
+    "out_ids": "results/dream_arcc_smoke5_reasoning_ids.json",
+    "out_log": "results/dream_arcc_smoke5_reasoning_run_log.json",
+    "extra": {}
+  },
+  "git_revision": "bc1c17dfe7b0147af8a4b6661453a9530779295a",
+  "env": {
+    "cuda_visible_devices": "2",
+    "device": "cuda:0",
+    "gpu_name": "NVIDIA RTX A6000"
+  },
+  "n_trajectories": 5,
+  "ids": [
+    "Mercury_7175875",
+    "Mercury_SC_409171",
+    "Mercury_SC_408547",
+    "Mercury_407327",
+    "MCAS_2006_9_44"
+  ],
+  "sanity": [
+    {
+      "id": "Mercury_7175875",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "Mercury_7175875",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_409171",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_409171",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_408547",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_408547",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_407327",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_407327",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MCAS_2006_9_44",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "MCAS_2006_9_44",
+      "last_step_non_null": true
+    }
+  ],
+  "null_rule": "None = no verdict yet, not a distinct answer. Flip counted only between two non-null differing verdicts. Convergence over non-null sequence, mapped to original index."
+}

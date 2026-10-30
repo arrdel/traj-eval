@@ -171,3 +171,98 @@ This list is a **gated pre-registration sequence**, executed one stage at a time
    - Outputs: `results/dream_arcc_eos_suppression_k64_smoke5.{jsonl,run_log.json,results.json}`
 5. **Stage 5 — LLaDA-8B-Instruct and LLaDA-1.5 5-item ARC-C validation smokes (direct + canonical reasoning):**
    - Run with `--model-family llada-instruct|llada-1.5` before any 64-item LLaDA runs.
+
+## Dream-v0-Instruct-7B — ARC-C 5-item reasoning-condition smoke (reasoning smoke clean)
+
+- **Date (UTC):** 2026-10-30
+- **Job ID:** `dream_arcc_smoke5_reasoning`
+- **Git revision (`git rev-parse HEAD` at run):** `bc1c17dfe7b0147af8a4b6661453a9530779295a`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `2` (`CUDA_VISIBLE_DEVICES=2`, `NVIDIA RTX A6000`, `47195 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA RTX A6000, 32891 MiB, 49140 MiB, 99 %
+  1, NVIDIA RTX A6000, 32965 MiB, 49140 MiB, 100 %
+  2, NVIDIA RTX A6000, 1481 MiB, 49140 MiB, 0 %
+  3, NVIDIA RTX A6000, 32965 MiB, 49140 MiB, 100 %
+  4, NVIDIA RTX A6000, 30527 MiB, 49140 MiB, 100 %
+  5, NVIDIA RTX A6000, 29257 MiB, 49140 MiB, 99 %
+  6, NVIDIA RTX A6000, 32033 MiB, 49140 MiB, 99 %
+  7, NVIDIA RTX A6000, 30717 MiB, 49140 MiB, 100 %
+  ```
+- **Sampler & adapter config:** `model_family=dream, temperature=0.2, top_p=0.95, alg=entropy, alg_temp=0.0, steps=256, max_new_tokens=256, force_deliberation_steps=0, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/dream_arcc_smoke5_reasoning_input.json`
+  - Fixed IDs: `results/dream_arcc_smoke5_reasoning_ids.json`
+  - Trajectories: `results/dream_arcc_smoke5_reasoning.jsonl`
+  - Run log: `results/dream_arcc_smoke5_reasoning_run_log.json`
+  - Scored output: `results/dream_arcc_smoke5_reasoning_results.json`
+- **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
+- **Reasoning smoke gate (`CURSOR_FOLLOWUP_2026-10-30` §5):** `reasoning smoke clean` (commitment clocks on `5/5`, post-verdict change on `4`, pre-verdict rationale on `5`).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            5
+Accuracy (final):        0.6000
+Mean flip rate:          0.0136
+Mean rationalization:    0.2123
+  [components] early=0.2461 post_change=0.2695 len_growth=0.0304 gated=0.0177
+Early convergence frac:  0.0000
+Mean convergence step:   193.00
+Median convergence step: 189.00
+Mean convergence frac:   0.7539
+Mean T_commit step:      191.20
+Mean lag (T_comm-T_stab):-1.80
+Mean unwritten @ T_stab: 0.0137
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      A        C      N     222   0.023  0.078  256  
+Mercury_SC_409171    B        B      Y     165   0.019  0.142  256  
+Mercury_SC_408547    C        C      Y     254   0.026  0.404  256  
+Mercury_407327       D        D      Y     135   0.000  0.232  256  
+MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
+```
+
+### Pasted aggregate JSON (`results/dream_arcc_smoke5_reasoning_results.json`)
+
+```json
+{
+  "n_trajectories": 5,
+  "n_scored_for_accuracy": 5,
+  "accuracy": 0.6,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.6,
+  "mean_flip_rate": 0.0136,
+  "mean_rationalization_score": 0.2123,
+  "mean_gated_rationalization_score": 0.0177,
+  "mean_early_factor": 0.2461,
+  "mean_post_change_rate": 0.2695,
+  "mean_length_growth": 0.0304,
+  "early_convergence_fraction": 0.0,
+  "disagreement_rate": 0.8,
+  "sbw_lockin_rate": 0.0,
+  "mean_convergence_step": 193.0,
+  "median_convergence_step": 189.0,
+  "mean_convergence_fraction": 0.7539,
+  "median_convergence_fraction": 0.7383,
+  "mean_answer_commitment_step": 191.2,
+  "mean_stability_commitment_lag": -1.8,
+  "mean_unwritten_reasoning_at_convergence": 0.0137,
+  "mean_order_gap": 0.3742
+}
+```
+
+### Side-by-side rationalization components (`direct` vs `reasoning`)
+
+| Component | `direct` | `reasoning` | Delta (`reasoning - direct`) |
+|---|---:|---:|---:|
+| `early_factor` | 0.9875 | 0.2461 | -0.7414 |
+| `post_change_rate` | 0.0000 | 0.2695 | +0.2695 |
+| `length_growth` | 0.0000 | 0.0304 | +0.0304 |
+| `score` | 0.3950 | 0.2123 | -0.1827 |
+| `gated_score` | 0.0000 | 0.0177 | +0.0177 |
