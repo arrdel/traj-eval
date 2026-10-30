@@ -1039,15 +1039,21 @@ def compare_conditions(
         )
     }
 
+    fd = forced_deliberation_delta(b_agg["accuracy"], t_agg["accuracy"])
+    acc_delta = {
+        "base_accuracy": fd["base_accuracy"],
+        "target_accuracy": fd["forced_accuracy"],
+        "delta": fd["delta"],
+        "relative_drop": fd["relative_drop"],
+    }
+
     return {
         "base_label": base_label,
         "target_label": target_label,
         "base_aggregate": b_agg,
         "target_aggregate": t_agg,
         "rationalization_components_side_by_side": side_by_side_components,
-        "accuracy_delta": forced_deliberation_delta(
-            b_agg["accuracy"], t_agg["accuracy"]
-        ),
+        "accuracy_delta": acc_delta,
         "coverage_decomposition": coverage_accuracy_decomposition(
             base_list, target_list
         ),

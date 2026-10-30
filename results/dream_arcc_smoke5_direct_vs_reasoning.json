@@ -31,7 +31,7 @@
     "accuracy": 0.8,
     "coverage": 1.0,
     "conditional_accuracy": 0.8,
-    "mean_flip_rate": 0.0126,
+    "mean_flip_rate": 0.0,
     "mean_rationalization_score": 0.2068,
     "mean_gated_rationalization_score": 0.0166,
     "mean_early_factor": 0.2445,
@@ -78,7 +78,7 @@
   },
   "accuracy_delta": {
     "base_accuracy": 1.0,
-    "forced_accuracy": 0.8,
+    "target_accuracy": 0.8,
     "delta": -0.19999999999999996,
     "relative_drop": 0.19999999999999996
   },
@@ -108,10 +108,10 @@
       "metric": "flip_rate",
       "n_paired": 5,
       "base_mean": 0.0,
-      "target_mean": 0.0126,
-      "delta": 0.0126,
-      "ci_low": 0.0037,
-      "ci_high": 0.0201,
+      "target_mean": 0.0,
+      "delta": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.0,
       "ci_level": 0.9
     },
     "rationalization_score": {

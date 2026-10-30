@@ -302,8 +302,8 @@
     },
     {
       "id": "Mercury_402216",
-      "final_verdict": "D",
-      "sequences_verdict": "D",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
       "match": true
     },
     {
@@ -682,13 +682,13 @@
     },
     {
       "id": "Mercury_412681",
-      "final_verdict": "A",
-      "sequences_verdict": "A",
+      "final_verdict": null,
+      "sequences_verdict": null,
       "match": true
     },
     {
       "id": "Mercury_412681",
-      "last_step_non_null": true
+      "last_step_non_null": false
     },
     {
       "id": "Mercury_400440",

@@ -444,6 +444,8 @@ def test_reasoning_smoke_gate_and_compare_conditions(tmp_path):
     assert sbs["post_change_rate"]["reasoning"] > 0.0
     assert sbs["gated_score"]["direct"] == 0.0
     assert sbs["gated_score"]["reasoning"] > 0.0
+    assert "target_accuracy" in comp["accuracy_delta"]
+    assert "forced_accuracy" not in comp["accuracy_delta"]
 
     # Test CLI compare subcommand
     import json

@@ -19,18 +19,18 @@ Every archetype is constructed so the final answer is correct. Accuracy cannot t
 
 Forced deliberation is not defined on this file. The function only subtracts two accuracies the caller already has.
 
-## Real checkpoints — not run
+## Real checkpoints — status overview
 
 Chosen 17 Oct 2026. Text trio first, because Yeom et al. (arXiv:2608.05687) already published commitment-order numbers on these three and the paper has to be comparable. MMaDA is the later modality holdout from the research plan, not a substitute for LLaDA-1.5 in the first table.
 
 | Checkpoint | Hugging Face id | Status |
 |---|---|---|
-| LLaDA-8B-Instruct | `GSAI-ML/LLaDA-8B-Instruct` | Adapter ready (`src/traj_eval/adapters/llada.py`). 5-item & 64-item ARC-C suites completed on `ai-lab2` (next PR). |
-| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | Adapter ready (`src/traj_eval/adapters/llada.py`). 5-item & 64-item ARC-C suites completed on `ai-lab2` (next PR). |
+| LLaDA-8B-Instruct | `GSAI-ML/LLaDA-8B-Instruct` | Adapter ready (`src/traj_eval/adapters/llada.py`). GPU run pending. |
+| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | Adapter ready (`src/traj_eval/adapters/llada.py`). GPU run pending. |
 | Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct & reasoning smokes clean + 64-item paired direct & canonical reasoning suites completed (2026-10-30). |
 | MMaDA-8B-MixCoT (holdout) | `Gen-Verse/MMaDA-8B-MixCoT` | Not in the first suite. |
 
-Why nothing was launched: all eight RTX A6000s on this machine were in use (about 43 GB of 49 GB, utilization 100%). The default PyTorch in the base environment is `2.11.0+cu130` and does not see the driver. A later run should use a CUDA 12.1 build, one GPU that is actually free, and a sampler config written down before the job starts.
+Historical note (17 Oct 2026): no checkpoints were run on initial commit because all eight RTX A6000s were occupied (~43 GB of 49 GB, 100% utilization) and the base environment PyTorch (`2.11.0+cu130`) could not see the CUDA 12.1 driver. Subsequent runs below use a pinned `transformers==4.46.2` CUDA environment (`cdr-gpu` on `titan3` and `.venv-gpu` on `ai-lab2`) with one dedicated GPU per run and full run logs.
 
 ### Smoke protocol, to run unchanged once a GPU is free
 
@@ -209,7 +209,7 @@ This list is a **gated pre-registration sequence**, executed one stage at a time
 === traj-eval summary ===
 Trajectories:            5
 Accuracy (final):        0.8000
-Mean flip rate:          0.0126
+Mean flip rate:          0.0000
 Mean rationalization:    0.2068
   [components] early=0.2445 post_change=0.2574 len_growth=0.0299 gated=0.0166
 Early convergence frac:  0.0000
@@ -223,9 +223,9 @@ Mean unwritten @ T_stab: 0.0137
 Per-trajectory:
 id                   final    gold   corr  conv  flip   rat    steps
 --------------------------------------------------------------------
-Mercury_7175875      C        C      Y     224   0.018  0.050  256  
-Mercury_SC_409171    B        B      Y     165   0.019  0.142  256  
-Mercury_SC_408547    C        C      Y     254   0.026  0.404  256  
+Mercury_7175875      C        C      Y     224   0.000  0.050  256  
+Mercury_SC_409171    B        B      Y     165   0.000  0.142  256  
+Mercury_SC_408547    C        C      Y     254   0.000  0.404  256  
 Mercury_407327       D        D      Y     135   0.000  0.232  256  
 MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
 ```
@@ -239,7 +239,7 @@ MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
   "accuracy": 0.8,
   "coverage": 1.0,
   "conditional_accuracy": 0.8,
-  "mean_flip_rate": 0.0126,
+  "mean_flip_rate": 0.0,
   "mean_rationalization_score": 0.2068,
   "mean_gated_rationalization_score": 0.0166,
   "mean_early_factor": 0.2445,
@@ -292,7 +292,7 @@ MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
   - Side-by-side comparison JSON: `results/dream_arcc_smoke64_direct_vs_reasoning.json`
 - **Undecided count:**
   - `direct_64`: **0 undecided** (64 / 64 non-null at final step).
-  - `reasoning_64`: **0 undecided** (64 / 64 non-null at final step).
+  - `reasoning_64`: **1 undecided** (63 / 64 non-null at final step; `Mercury_412681` truncated during option analysis before reaching a conclusion, so `prediction = null`, `coverage = 0.9844`, `conditional_accuracy = 0.8413`, `accuracy = 0.8281`).
 
 ### Pasted aggregate JSON — `direct_64` (`results/dream_arcc_smoke64_direct_results.json`)
 
@@ -328,27 +328,27 @@ MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
 ```json
 {
   "n_trajectories": 64,
-  "n_scored_for_accuracy": 64,
-  "accuracy": 0.8125,
-  "coverage": 1.0,
-  "conditional_accuracy": 0.8125,
-  "mean_flip_rate": 0.0169,
-  "mean_rationalization_score": 0.2826,
-  "mean_gated_rationalization_score": 0.0718,
-  "mean_early_factor": 0.3244,
-  "mean_post_change_rate": 0.319,
-  "mean_length_growth": 0.1264,
-  "early_convergence_fraction": 0.0781,
-  "disagreement_rate": 0.7656,
-  "sbw_lockin_rate": 0.0156,
-  "mean_convergence_step": 172.9531,
-  "median_convergence_step": 185.5,
-  "mean_convergence_fraction": 0.6756,
-  "median_convergence_fraction": 0.7246,
-  "mean_answer_commitment_step": 191.4531,
-  "mean_stability_commitment_lag": 18.5,
-  "mean_unwritten_reasoning_at_convergence": 0.081,
-  "mean_order_gap": 0.3745
+  "n_scored_for_accuracy": 63,
+  "accuracy": 0.8281,
+  "coverage": 0.9844,
+  "conditional_accuracy": 0.8413,
+  "mean_flip_rate": 0.0106,
+  "mean_rationalization_score": 0.1703,
+  "mean_gated_rationalization_score": 0.0125,
+  "mean_early_factor": 0.2559,
+  "mean_post_change_rate": 0.1597,
+  "mean_length_growth": 0.0203,
+  "early_convergence_fraction": 0.0794,
+  "disagreement_rate": 0.5469,
+  "sbw_lockin_rate": 0.0159,
+  "mean_convergence_step": 189.4603,
+  "median_convergence_step": 205.0,
+  "mean_convergence_fraction": 0.7401,
+  "median_convergence_fraction": 0.8008,
+  "mean_answer_commitment_step": 192.2857,
+  "mean_stability_commitment_lag": 2.8254,
+  "mean_unwritten_reasoning_at_convergence": 0.0145,
+  "mean_order_gap": 0.3762
 }
 ```
 
@@ -356,8 +356,8 @@ MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
 
 | Component | `direct_64` (`n=64`) | `reasoning_64` (`n=64`) | Delta (`reasoning_64 - direct_64`) |
 |---|---:|---:|---:|
-| `early_factor` | 0.9852 | 0.3244 | -0.6608 |
-| `post_change_rate` | 0.0001 | 0.3190 | +0.3189 |
-| `length_growth` | 0.0035 | 0.1264 | +0.1229 |
-| `score` | 0.3948 | 0.2826 | -0.1122 |
-| `gated_score` | 0.0012 | 0.0718 | +0.0706 |
+| `early_factor` | 0.9852 | 0.2559 | -0.7293 |
+| `post_change_rate` | 0.0001 | 0.1597 | +0.1596 |
+| `length_growth` | 0.0035 | 0.0203 | +0.0168 |
+| `score` | 0.3948 | 0.1703 | -0.2245 |
+| `gated_score` | 0.0012 | 0.0125 | +0.0113 |
