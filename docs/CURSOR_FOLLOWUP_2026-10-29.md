@@ -67,49 +67,36 @@ The commitment metrics in `results/dream_arcc_smoke5_results.json`
 are all null. They cannot be backfilled from the JSONL: the raw
 history is not stored there. They need a fresh run.
 
-## 3. Fixes first (no GPU needed, one small commit each)
+## 3. Fixes first (no GPU needed, one small commit each) — COMPLETED (2026-10-30)
 
-1. **Stale docstring.** `src/traj_eval/adapters/dream.py` module
-   docstring still says "No token-commitment logging". Update it to
-   describe `compute_step_commitments` and `history_to_trajectory`'s
-   commitment fields. A docstring that contradicts the code is a bug.
-2. **Rationalization weight inconsistency.**
-   `rationalization_components` returns `0.3 * early_factor` when
-   there are no post-convergence steps, but `0.4 * early_factor +
-   0.4 * post_change_rate + 0.2 * length_growth` otherwise. With
-   post_change_rate = 0 and length_growth = 0, the general formula
-   gives `0.4 * early_factor`, not `0.3`. Change the no-post branch
-   to `0.4 * early_factor` and add a test for a trajectory that
-   converges at the last step. This does not change the smoke number
-   (the smoke has post-convergence steps), but it must not ship
-   inconsistent.
-3. **Answer-position detection is substring-based and will bite on
-   reasoning traces.** `compute_step_commitments` picks the last
-   content position whose single-token decode *contains* the verdict
-   letter (case-insensitive). A rationale token such as " because"
-   contains "C" after upper-casing, so on an answer-first-then-
-   elaborate trace the detected answer position can land in trailing
-   rationale instead of on the answer token, corrupting T_commit and
-   the rationale fraction. Change the search to: first, exact match
-   (token piece stripped of whitespace/punctuation equals the verdict
-   letter), scanning from the end; only if no exact match exists,
-   fall back to the current substring search; if neither matches,
-   keep the existing `content_pos[-1]` fallback. Add a fake-history
-   test where trailing rationale contains the verdict letter as a
-   substring and the answer token is earlier, asserting `ans_pos`
-   stays on the answer token.
-4. **Relabel, do not delete, the stale baselines section.**
-   `results/baselines.md` still has a "Smoke protocol" section
-   describing a GSM8K first-64 run at temperature 0. That is a
-   pre-registered protocol for a run that has not happened, and it
-   now sits next to an ARC-C smoke that actually ran at
-   temperature 0.2. Add a one-line header to that section:
-   "Pre-registered GSM8K protocol, not yet run; it is not the ARC-C
-   smoke protocol above." Do not delete the pre-registration and do
-   not edit the synthetic rows.
-5. **Update the old handoff's section 4** to point here, so the next
-   agent does not follow the superseded order (full ARC-C before
-   commitment logging).
+All 5 pre-GPU items have been implemented, tested (`56 passed`), and pushed:
+
+1. **[x] Stale docstring (`5cce209`).** `src/traj_eval/adapters/dream.py` module
+   docstring updated to describe `compute_step_commitments` and
+   `history_to_trajectory`'s commitment fields (`answer_committed`,
+   `committed_reasoning_fraction`), plus `frontier_width` and
+   `force_deliberation_steps`.
+2. **[x] Rationalization weight inconsistency (`521f692`).**
+   `rationalization_components` no-post-steps branch updated from
+   `0.3 * early_factor` to `0.4 * early_factor` (plus `gated_score`
+   added alongside `score`) with unit test
+   `test_rationalization_last_step_convergence_uses_0_4_weight`.
+3. **[x] Answer-position detection (`5cce209`).** `compute_step_commitments`
+   now uses 3-pass matching: (1) exact punctuation/whitespace-stripped
+   token match scanning from the end, (2) substring fallback, (3)
+   `content_pos[-1]` fallback, verified by
+   `test_compute_step_commitments_exact_match_beats_trailing_substring`.
+4. **[x] Relabel stale baselines section (`d32cd1e`).**
+   Added explicit header `"Pre-registered GSM8K protocol, not yet run;
+   it is not the ARC-C smoke protocol above."` in `results/baselines.md`.
+5. **[x] Update old handoff's section 4 (`d32cd1e`).**
+   `docs/CURSOR_HANDOFF_DREAM_SMOKE.md` §4 now points to this follow-up
+   document.
+6. **[x] Pre-register reasoning-condition 5-item smoke (`d32cd1e`).**
+   `results/dream_arcc_smoke5_reasoning_input.json` and
+   `results/dream_arcc_smoke5_reasoning_ids.json` are committed with the
+   exact closing line specified in §4 below. Waiting on GPU reservation
+   (`>= 25 GB` free VRAM) to execute the run.
 
 ## 4. Next GPU run: reasoning-condition 5-item smoke (the ONLY next experiment)
 
