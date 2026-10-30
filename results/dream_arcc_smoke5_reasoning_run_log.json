@@ -16,9 +16,9 @@
     "out_log": "results/dream_arcc_smoke5_reasoning_run_log.json",
     "extra": {}
   },
-  "git_revision": "bc1c17dfe7b0147af8a4b6661453a9530779295a",
+  "git_revision": "267dfe3f90f693b40e5a41775553bb23febd7cf3",
   "env": {
-    "cuda_visible_devices": "2",
+    "cuda_visible_devices": "5",
     "device": "cuda:0",
     "gpu_name": "NVIDIA RTX A6000"
   },
@@ -33,8 +33,8 @@
   "sanity": [
     {
       "id": "Mercury_7175875",
-      "final_verdict": "A",
-      "sequences_verdict": "A",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
       "match": true
     },
     {
