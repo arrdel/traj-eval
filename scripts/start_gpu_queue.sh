@@ -11,6 +11,8 @@ QUEUE_SCRIPT="${REPO_ROOT}/scripts/gpu_job_queue.py"
 PID_FILE="${REPO_ROOT}/.gpu_queue.pid"
 LOCK_FILE="${REPO_ROOT}/.gpu_queue.lock"
 LOG_FILE="${REPO_ROOT}/.gpu_queue_daemon.log"
+REPO_HASH="$(printf '%s' "${REPO_ROOT}" | cksum | awk '{print $1}')"
+TMUX_SESSION="traj_eval_gpu_queue_${REPO_HASH}"
 
 ACTION="${1:-start}"
 shift || true
@@ -24,17 +26,37 @@ case "${ACTION}" in
         exit 0
       fi
     fi
-    nohup "${PYTHON_BIN}" "${QUEUE_SCRIPT}" "$@" >> "${LOG_FILE}" 2>&1 < /dev/null &
-    DAEMON_PID=$!
-    echo "${DAEMON_PID}" > "${PID_FILE}"
-    echo "[gpu-queue] Started sequential GPU watcher daemon (PID ${DAEMON_PID})."
+    if command -v tmux >/dev/null 2>&1; then
+      tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+      QUOTED_ARGS=""
+      for arg in "$@"; do
+        QUOTED_ARGS+=" $(printf '%q' "${arg}")"
+      done
+      QUOTED_ROOT="$(printf '%q' "${REPO_ROOT}")"
+      QUOTED_PY="$(printf '%q' "${PYTHON_BIN}")"
+      QUOTED_SCRIPT="$(printf '%q' "${QUEUE_SCRIPT}")"
+      QUOTED_LOG="$(printf '%q' "${LOG_FILE}")"
+      tmux new-session -d -s "${TMUX_SESSION}" \
+        "cd ${QUOTED_ROOT} && ${QUOTED_PY} ${QUOTED_SCRIPT}${QUOTED_ARGS} >> ${QUOTED_LOG} 2>&1"
+      sleep 1
+      DAEMON_PID="$(cat "${LOCK_FILE}" 2>/dev/null || true)"
+      if [[ -n "${DAEMON_PID}" ]]; then
+        echo "${DAEMON_PID}" > "${PID_FILE}"
+      fi
+      echo "[gpu-queue] Started sequential GPU watcher daemon in tmux session '${TMUX_SESSION}' (PID ${DAEMON_PID:-pending})."
+    else
+      setsid nohup "${PYTHON_BIN}" "${QUEUE_SCRIPT}" "$@" >> "${LOG_FILE}" 2>&1 < /dev/null &
+      DAEMON_PID=$!
+      echo "${DAEMON_PID}" > "${PID_FILE}"
+      echo "[gpu-queue] Started sequential GPU watcher daemon (PID ${DAEMON_PID})."
+    fi
     echo "[gpu-queue] Log file: ${LOG_FILE}"
     ;;
   status)
     if [[ -f "${LOCK_FILE}" ]]; then
       EXISTING_PID="$(cat "${LOCK_FILE}" 2>/dev/null || true)"
       if [[ -n "${EXISTING_PID}" ]] && kill -0 "${EXISTING_PID}" 2>/dev/null; then
-        echo "[gpu-queue] Daemon status: RUNNING (PID ${EXISTING_PID})"
+        echo "[gpu-queue] Daemon status: RUNNING (PID ${EXISTING_PID}, session=${TMUX_SESSION})"
       else
         echo "[gpu-queue] Daemon status: STOPPED (stale lock file)"
       fi
@@ -49,6 +71,9 @@ case "${ACTION}" in
     fi
     ;;
   stop)
+    if command -v tmux >/dev/null 2>&1; then
+      tmux kill-session -t "${TMUX_SESSION}" 2>/dev/null || true
+    fi
     for F in "${LOCK_FILE}" "${PID_FILE}"; do
       if [[ -f "${F}" ]]; then
         P="$(cat "${F}" 2>/dev/null || true)"
@@ -62,7 +87,12 @@ case "${ACTION}" in
     ;;
   install-cron)
     CRON_CMD="*/10 * * * * cd ${REPO_ROOT} && bash ${REPO_ROOT}/scripts/start_gpu_queue.sh start >/dev/null 2>&1"
-    (crontab -l 2>/dev/null | grep -v "start_gpu_queue.sh" || true; echo "${CRON_CMD}") | crontab -
+    EXISTING_CRON="$(crontab -l 2>/dev/null | grep -v "${REPO_ROOT}/scripts/start_gpu_queue.sh" || true)"
+    if [[ -n "${EXISTING_CRON}" ]]; then
+      printf "%s\n%s\n" "${EXISTING_CRON}" "${CRON_CMD}" | crontab -
+    else
+      printf "%s\n" "${CRON_CMD}" | crontab -
+    fi
     echo "[gpu-queue] Installed 10-minute cron watchdog for ${REPO_ROOT}/scripts/start_gpu_queue.sh"
     ;;
   *)
