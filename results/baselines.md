@@ -34,6 +34,8 @@ Why nothing was launched: all eight RTX A6000s on this machine were in use (abou
 
 ### Smoke protocol, to run unchanged once a GPU is free
 
+Pre-registered GSM8K protocol, not yet run; it is not the ARC-C smoke protocol below.
+
 Pre-register before looking at accuracy:
 
 - Data: GSM8K test, first 64 questions in the published test order. Store the id list in `results/smoke64_ids.json` when the run starts.
@@ -116,39 +118,45 @@ MCAS_2006_9_44       D        D      Y     4     0.000  0.394  256
   "n_trajectories": 5,
   "n_scored_for_accuracy": 5,
   "accuracy": 1.0,
+  "coverage": 1.0,
+  "conditional_accuracy": 1.0,
   "mean_flip_rate": 0.0,
   "mean_rationalization_score": 0.395,
+  "mean_gated_rationalization_score": 0.0,
   "mean_early_factor": 0.9875,
   "mean_post_change_rate": 0.0,
   "mean_length_growth": 0.0,
   "early_convergence_fraction": 1.0,
+  "disagreement_rate": 0.0,
+  "sbw_lockin_rate": 0.0,
   "mean_convergence_step": 3.2,
   "median_convergence_step": 3.0,
   "mean_convergence_fraction": 0.0125,
   "median_convergence_fraction": 0.0117,
   "mean_answer_commitment_step": null,
   "mean_stability_commitment_lag": null,
-  "mean_unwritten_reasoning_at_convergence": null
+  "mean_unwritten_reasoning_at_convergence": null,
+  "mean_order_gap": null
 }
 ```
 
 ### Diagnostic note on the 5-item trace
 
-Under the direct-answer prompt template in `results/dream_arcc_smoke5_input.json` (`Respond in the form "Answer: <letter>" with the letter of the correct option.`), Dream unmasks `'Answer'` -> `'Answer:'` -> `'Answer: <letter>'` in steps 1–4 and fills the remaining ~252 canvas positions with EOS tokens (stripped by `skip_special_tokens=True`). Because no post-convergence rationale text is written (`mean_post_change_rate = 0.0`, `mean_length_growth = 0.0`), the heuristic `rationalization_score` equals `0.4 * early_factor` (~0.395) purely from early convergence relative to the 256-step canvas.
+Under the direct-answer prompt template in `results/dream_arcc_smoke5_input.json` (`Respond in the form "Answer: <letter>" with the letter of the correct option.`), Dream unmasks `'Answer'` -> `'Answer:'` -> `'Answer: <letter>'` in steps 1–4 and fills the remaining ~252 canvas positions with EOS tokens (stripped by `skip_special_tokens=True`). Because no post-convergence rationale text is written (`mean_post_change_rate = 0.0`, `mean_length_growth = 0.0`, `mean_gated_rationalization_score = 0.0`), the additive heuristic `rationalization_score` equals `0.4 * early_factor` (~0.395) purely from early convergence relative to the 256-step canvas.
 
 ## Pre-registered next runs (ready for next GPU window with >=25 GB free)
 
-All input files and fixed ID lists are committed before any accuracy is observed:
+All input files and fixed ID lists are committed before any accuracy is observed (following `docs/CURSOR_FOLLOWUP_2026-10-29.md` §4):
 
-1. **Dream-7B paired ARC-C CoT 5-item smoke + commitment clocks:**
-   - Inputs & IDs: `results/dream_arcc_cot_smoke5_input.json`, `results/dream_arcc_cot_smoke5_ids.json`
+1. **Dream-7B reasoning-condition 5-item ARC-C smoke (THE ONLY NEXT GPU EXPERIMENT, gated on non-null commitment fields + real reasoning text):**
+   - Inputs & IDs: `results/dream_arcc_smoke5_reasoning_input.json`, `results/dream_arcc_smoke5_reasoning_ids.json` (closing line: `Think step by step, then give your final answer in the form "Answer: <letter>".`)
    - Command:
      ```bash
      CUDA_VISIBLE_DEVICES=<card> /home/achinda1/miniconda3/envs/cdr-gpu/bin/python experiments/run_dream_arcc_smoke.py \
-       --items results/dream_arcc_cot_smoke5_input.json \
-       --out-jsonl results/dream_arcc_cot_smoke5.jsonl \
-       --out-ids results/dream_arcc_cot_smoke5_ids.json \
-       --out-log results/dream_arcc_cot_smoke5_run_log.json
+       --items results/dream_arcc_smoke5_reasoning_input.json \
+       --out-jsonl results/dream_arcc_smoke5_reasoning.jsonl \
+       --out-ids results/dream_arcc_smoke5_reasoning_ids.json \
+       --out-log results/dream_arcc_smoke5_reasoning_run_log.json
      ```
 2. **Dream-7B pre-registered forced-deliberation smoke (`K=64` EOS-suppressed steps):**
    - Pre-registered parameter: `--force-deliberation-steps 64` on the 5 ARC-C smoke items (`results/dream_arcc_smoke5_input.json`), scored via `forced_deliberation_delta(base_accuracy, forced_accuracy)`.

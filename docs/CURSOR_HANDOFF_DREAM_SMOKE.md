@@ -119,8 +119,14 @@ Do NOT claim a result from 5 items. The smoke proves the pipeline is clean,
 not that any model reasons. Write "smoke clean" or "smoke failed: <reason>",
 nothing stronger.
 
-## 4. After the smoke is clean (in this order)
+## 4. After the smoke is clean (SUPERSEDED — see `docs/CURSOR_FOLLOWUP_2026-10-29.md`)
 
+**Stop:** The sequencing below was superseded on 2026-10-29 by
+`docs/CURSOR_FOLLOWUP_2026-10-29.md` §§3–5 (which puts commitment logging +
+the 5-item reasoning-condition ARC-C smoke `dream_arcc_smoke5_reasoning_*`
+ahead of scaling to full ARC-C). Follow `docs/CURSOR_FOLLOWUP_2026-10-29.md`.
+
+Original sequence (for historical reference only):
 1. Full ARC-C (same adapter, same sampler, ids fixed first, run log required).
 2. GSM8K — SEPARATE numeric-answer extraction + exemplar stripping.
    Do NOT reuse the A-D regex for GSM8K. Write a new extraction function
