@@ -123,6 +123,13 @@ def main(argv=None) -> int:
     ap.add_argument("--top-p", type=float, default=0.95)
     ap.add_argument("--steps", type=int, default=256)
     ap.add_argument("--max-new-tokens", type=int, default=256)
+    ap.add_argument("--block-length", type=int, default=256, help="LLaDA block length")
+    ap.add_argument(
+        "--model-family",
+        choices=["dream", "llada-instruct", "llada-1.5"],
+        default="dream",
+        help="Checkpoint family to evaluate",
+    )
     ap.add_argument("--task", choices=["arcc", "gsm8k"], default="arcc")
     ap.add_argument("--force-deliberation-steps", type=int, default=0)
     args = ap.parse_args(argv)
@@ -143,21 +150,44 @@ def main(argv=None) -> int:
     if len(items) != 5:
         print(f"WARNING: expected 5 items for smoke, got {len(items)}", file=sys.stderr)
 
-    from traj_eval.adapters.dream import run_dream_arcc_smoke
+    if args.model_family in ("llada-instruct", "llada-1.5"):
+        from traj_eval.adapters.llada import (
+            LLADA_15_ID,
+            LLADA_INSTRUCT_ID,
+            LLaDASmokeConfig,
+            run_llada_smoke,
+        )
 
-    cfg = DreamSmokeConfig(
-        task=args.task,
-        temperature=args.temperature,
-        top_p=args.top_p,
-        steps=args.steps,
-        max_new_tokens=args.max_new_tokens,
-        force_deliberation_steps=args.force_deliberation_steps,
-        n_items=len(items),
-        out_jsonl=args.out_jsonl,
-        out_ids=args.out_ids,
-        out_log=args.out_log,
-    )
-    log = run_dream_arcc_smoke(items, cfg)
+        llada_id = LLADA_INSTRUCT_ID if args.model_family == "llada-instruct" else LLADA_15_ID
+        lcfg = LLaDASmokeConfig(
+            model_id=llada_id,
+            task=args.task,
+            gen_length=args.max_new_tokens,
+            steps=args.steps,
+            block_length=args.block_length,
+            temperature=args.temperature,
+            n_items=len(items),
+            out_jsonl=args.out_jsonl,
+            out_ids=args.out_ids,
+            out_log=args.out_log,
+        )
+        log = run_llada_smoke(items, lcfg)
+    else:
+        from traj_eval.adapters.dream import run_dream_arcc_smoke
+
+        cfg = DreamSmokeConfig(
+            task=args.task,
+            temperature=args.temperature,
+            top_p=args.top_p,
+            steps=args.steps,
+            max_new_tokens=args.max_new_tokens,
+            force_deliberation_steps=args.force_deliberation_steps,
+            n_items=len(items),
+            out_jsonl=args.out_jsonl,
+            out_ids=args.out_ids,
+            out_log=args.out_log,
+        )
+        log = run_dream_arcc_smoke(items, cfg)
     print(f"Wrote {log['n_trajectories']} trajectories to {args.out_jsonl}")
     print(f"Run log: {args.out_log}")
     print("Next: python -m traj_eval run --input", args.out_jsonl)
