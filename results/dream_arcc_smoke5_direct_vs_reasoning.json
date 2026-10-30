@@ -28,79 +28,79 @@
   "target_aggregate": {
     "n_trajectories": 5,
     "n_scored_for_accuracy": 5,
-    "accuracy": 0.6,
+    "accuracy": 0.8,
     "coverage": 1.0,
-    "conditional_accuracy": 0.6,
-    "mean_flip_rate": 0.0136,
-    "mean_rationalization_score": 0.2123,
-    "mean_gated_rationalization_score": 0.0177,
-    "mean_early_factor": 0.2461,
-    "mean_post_change_rate": 0.2695,
-    "mean_length_growth": 0.0304,
+    "conditional_accuracy": 0.8,
+    "mean_flip_rate": 0.0126,
+    "mean_rationalization_score": 0.2068,
+    "mean_gated_rationalization_score": 0.0166,
+    "mean_early_factor": 0.2445,
+    "mean_post_change_rate": 0.2574,
+    "mean_length_growth": 0.0299,
     "early_convergence_fraction": 0.0,
-    "disagreement_rate": 0.8,
+    "disagreement_rate": 0.6,
     "sbw_lockin_rate": 0.0,
-    "mean_convergence_step": 193.0,
+    "mean_convergence_step": 193.4,
     "median_convergence_step": 189.0,
-    "mean_convergence_fraction": 0.7539,
+    "mean_convergence_fraction": 0.7555,
     "median_convergence_fraction": 0.7383,
-    "mean_answer_commitment_step": 191.2,
-    "mean_stability_commitment_lag": -1.8,
+    "mean_answer_commitment_step": 196.0,
+    "mean_stability_commitment_lag": 2.6,
     "mean_unwritten_reasoning_at_convergence": 0.0137,
-    "mean_order_gap": 0.3742
+    "mean_order_gap": 0.3836
   },
   "rationalization_components_side_by_side": {
     "early_factor": {
       "direct": 0.9875,
-      "reasoning": 0.2461,
-      "delta": -0.7414
+      "reasoning": 0.2445,
+      "delta": -0.743
     },
     "post_change_rate": {
       "direct": 0.0,
-      "reasoning": 0.2695,
-      "delta": 0.2695
+      "reasoning": 0.2574,
+      "delta": 0.2574
     },
     "length_growth": {
       "direct": 0.0,
-      "reasoning": 0.0304,
-      "delta": 0.0304
+      "reasoning": 0.0299,
+      "delta": 0.0299
     },
     "score": {
       "direct": 0.395,
-      "reasoning": 0.2123,
-      "delta": -0.1827
+      "reasoning": 0.2068,
+      "delta": -0.1882
     },
     "gated_score": {
       "direct": 0.0,
-      "reasoning": 0.0177,
-      "delta": 0.0177
+      "reasoning": 0.0166,
+      "delta": 0.0166
     }
   },
   "accuracy_delta": {
     "base_accuracy": 1.0,
-    "forced_accuracy": 0.6,
-    "delta": -0.4,
-    "relative_drop": 0.4
+    "forced_accuracy": 0.8,
+    "delta": -0.19999999999999996,
+    "relative_drop": 0.19999999999999996
   },
   "coverage_decomposition": {
     "base_coverage": 1.0,
     "target_coverage": 1.0,
     "base_conditional_accuracy": 1.0,
-    "target_conditional_accuracy": 0.6,
+    "target_conditional_accuracy": 0.8,
     "base_accuracy": 1.0,
-    "target_accuracy": 0.6,
-    "delta_accuracy": -0.4,
+    "target_accuracy": 0.8,
+    "delta_accuracy": -0.2,
     "coverage_effect": 0.0,
-    "conditional_accuracy_effect": -0.4
+    "conditional_accuracy_effect": -0.2
   },
   "paired_bootstrap": {
     "accuracy": {
       "metric": "accuracy",
       "n_paired": 5,
       "base_mean": 1.0,
-      "target_mean": 0.6,
-      "delta": -0.4,
-      "ci_low": -0.8,
+      "target_mean": 0.8,
+      "delta": -0.2,
+      "ci_low": -0.6,
       "ci_high": 0.0,
       "ci_level": 0.9
     },
@@ -108,19 +108,19 @@
       "metric": "flip_rate",
       "n_paired": 5,
       "base_mean": 0.0,
-      "target_mean": 0.0136,
-      "delta": 0.0136,
-      "ci_low": 0.0046,
-      "ci_high": 0.0225,
+      "target_mean": 0.0126,
+      "delta": 0.0126,
+      "ci_low": 0.0037,
+      "ci_high": 0.0201,
       "ci_level": 0.9
     },
     "rationalization_score": {
       "metric": "rationalization_score",
       "n_paired": 5,
       "base_mean": 0.395,
-      "target_mean": 0.2123,
-      "delta": -0.1827,
-      "ci_low": -0.2607,
+      "target_mean": 0.2068,
+      "delta": -0.1882,
+      "ci_low": -0.2721,
       "ci_high": -0.1044,
       "ci_level": 0.9
     },
@@ -128,20 +128,20 @@
       "metric": "gated_rationalization_score",
       "n_paired": 5,
       "base_mean": 0.0,
-      "target_mean": 0.0177,
-      "delta": 0.0177,
-      "ci_low": 0.0042,
-      "ci_high": 0.0323,
+      "target_mean": 0.0166,
+      "delta": 0.0166,
+      "ci_low": 0.0021,
+      "ci_high": 0.0322,
       "ci_level": 0.9
     },
     "convergence_fraction": {
       "metric": "convergence_fraction",
       "n_paired": 5,
       "base_mean": 0.0125,
-      "target_mean": 0.7539,
-      "delta": 0.7414,
+      "target_mean": 0.7555,
+      "delta": 0.743,
       "ci_low": 0.6219,
-      "ci_high": 0.8523,
+      "ci_high": 0.8539,
       "ci_level": 0.9
     }
   }
