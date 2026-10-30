@@ -16,6 +16,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from traj_eval.metrics import answer_commitment_step, verdict_convergence_step
+from traj_eval.types import Trajectory
+
 
 def group_advantages(rewards: np.ndarray, eps: float = 1e-8, normalize: bool = True) -> np.ndarray:
     """Group-relative advantage over the last axis.
@@ -222,3 +225,121 @@ def train_addition(
         "greedy_accuracy": float((greedy == eval_batch.answers).mean()),
         "steps": float(steps),
     }
+
+
+def trajectory_step_weights(
+    traj: Trajectory,
+    scheme: str = "broadcast",
+    *,
+    fork_threshold: float = 0.6,
+) -> np.ndarray:
+    """Compute per-step RL credit weights ``w_t`` along a denoising trajectory.
+
+    Implements the credit-assignment schemes compared in Paper 1 Section 6 and
+    the 2025--2026 dLLM RL literature:
+
+    * ``"broadcast"``: ``w_t = 1.0`` for every step ``t`` (Zhao et al., d1 /
+      diffu-GRPO, arXiv:2504.12216). Broadcasts outcome advantage uniformly to
+      all denoising steps, including post-convergence backfill and EOS padding.
+    * ``"pre_convergence"``: ``w_t = 1.0`` for steps up to and including
+      ``verdict_convergence_step(traj)`` and ``0.0`` afterwards (Paper 1 §6).
+    * ``"pre_commitment"``: ``w_t = 1.0`` for steps up to and including
+      ``answer_commitment_step(traj)`` (or ``verdict_convergence_step`` when
+      commitment is not logged) and ``0.0`` afterwards.
+    * ``"step_rs"``: linear half-decay from ``1.0`` at the first denoising step
+      to ``0.5`` at the final step, matching StepRS-GRPO (Yu et al. 2026,
+      arXiv:2610.00661).
+    * ``"fork_only"``: ``w_t = 1.0`` only at high-uncertainty fallback/fork
+      steps where ``step.confidence < fork_threshold`` (or before verdict
+      convergence when confidence is not logged), matching ForkGRPO (Frkovic
+      et al. 2026, arXiv:2609.39859).
+    * ``"dtca"``: weights proportional to positive step-to-step confidence
+      improvements ``max(0, c_{t+1} - c_t)`` plus an anchor at verdict
+      convergence, inspired by DTCA (Chen et al. 2026, arXiv:2610.35201).
+    """
+    steps = traj.steps
+    n = len(steps)
+    if n == 0:
+        return np.zeros(0, dtype=np.float64)
+
+    conv_step = verdict_convergence_step(traj)
+    comm_step = answer_commitment_step(traj)
+
+    if scheme == "broadcast":
+        return np.ones(n, dtype=np.float64)
+
+    if scheme == "pre_convergence":
+        if conv_step is None:
+            return np.ones(n, dtype=np.float64)
+        return np.array(
+            [1.0 if s.step <= conv_step else 0.0 for s in steps], dtype=np.float64
+        )
+
+    if scheme == "pre_commitment":
+        cutoff = comm_step if comm_step is not None else conv_step
+        if cutoff is None:
+            return np.ones(n, dtype=np.float64)
+        return np.array(
+            [1.0 if s.step <= cutoff else 0.0 for s in steps], dtype=np.float64
+        )
+
+    if scheme == "step_rs":
+        if n == 1:
+            return np.ones(1, dtype=np.float64)
+        return np.linspace(1.0, 0.5, n, dtype=np.float64)
+
+    if scheme == "fork_only":
+        weights = np.zeros(n, dtype=np.float64)
+        for i, s in enumerate(steps):
+            if s.confidence is not None:
+                if s.confidence < fork_threshold:
+                    weights[i] = 1.0
+            elif conv_step is None or s.step <= conv_step:
+                weights[i] = 1.0
+        return weights
+
+    if scheme == "dtca":
+        weights = np.zeros(n, dtype=np.float64)
+        for i in range(n - 1):
+            c_now = steps[i].confidence
+            c_next = steps[i + 1].confidence
+            if c_now is not None and c_next is not None and c_next > c_now:
+                weights[i] = float(c_next - c_now)
+        if conv_step is not None:
+            for i, s in enumerate(steps):
+                if s.step == conv_step:
+                    weights[i] = max(weights[i], 1.0)
+        if weights.sum() == 0.0:
+            return trajectory_step_weights(traj, scheme="pre_convergence")
+        return weights / weights.max()
+
+    raise ValueError(f"Unsupported trajectory credit scheme: {scheme!r}")
+
+
+def post_convergence_credit_fraction(
+    traj: Trajectory,
+    scheme: str = "broadcast",
+    *,
+    fork_threshold: float = 0.6,
+) -> float:
+    """Fraction of total RL credit weight assigned strictly after verdict convergence.
+
+    Directly quantifies Paper 1 Claim C5: on trajectories that stabilize early,
+    an outcome-broadcast RL method (``scheme="broadcast"``) assigns most of its
+    update mass to steps after the verdict is already fixed, whereas
+    ``scheme="pre_convergence"`` assigns ``0.0``.
+    """
+    steps = traj.steps
+    if not steps:
+        return 0.0
+    conv_step = verdict_convergence_step(traj)
+    if conv_step is None:
+        return 0.0
+    w = trajectory_step_weights(traj, scheme=scheme, fork_threshold=fork_threshold)
+    total = float(w.sum())
+    if total <= 0.0:
+        return 0.0
+    post_mass = float(
+        sum(w[i] for i, s in enumerate(steps) if s.step > conv_step)
+    )
+    return round(post_mass / total, 4)
