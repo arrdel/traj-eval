@@ -17,8 +17,11 @@ from traj_eval.adapters.dream import (
     DreamSmokeConfig,
     compute_step_commitments,
     decode_generation_region,
+    extract_gsm8k_verdict,
     extract_verdict,
     history_to_trajectory,
+    normalize_numeric_answer,
+    strip_gsm8k_exemplars,
 )
 
 __all__ = [
@@ -27,6 +30,9 @@ __all__ = [
     "DreamSmokeConfig",
     "compute_step_commitments",
     "decode_generation_region",
+    "extract_gsm8k_verdict",
     "extract_verdict",
     "history_to_trajectory",
+    "normalize_numeric_answer",
+    "strip_gsm8k_exemplars",
 ]

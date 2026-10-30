@@ -105,6 +105,109 @@ def extract_verdict(text: str) -> str | None:
     return None
 
 
+# GSM8K numeric extraction patterns.
+# Intermediate arithmetic numbers in a chain-of-thought are NOT verdicts;
+# only explicit answer markers ("#### <num>", "\\boxed{<num>}",
+# "final answer: <num>", "the answer is <num>") emit a verdict.
+_GSM8K_HASH_RE = re.compile(r"####\s*\$?\s*([+-]?\d[\d,]*(?:\.\d+)?)")
+_GSM8K_BOXED_RE = re.compile(r"\\boxed\{\s*\$?\s*([+-]?\d[\d,]*(?:\.\d+)?)\s*\}")
+_GSM8K_PREFIX_RES = [
+    re.compile(
+        r"(?:final\s+answer|the\s+answer\s+is|answer\s+is|answer\s*:)\s*(?:is\s*)?[:\s]*\$?\s*([+-]?\d[\d,]*(?:\.\d+)?)",
+        re.IGNORECASE,
+    ),
+]
+_EXEMPLAR_TURN_STOP_RE = re.compile(r"\n\s*(?:Question|Q)\s*:", re.IGNORECASE)
+
+
+def normalize_numeric_answer(raw: str) -> str | None:
+    """Normalize a numeric answer string (strip commas/$/+, canonicalize ints).
+
+    Examples:
+        ``"1,200"`` -> ``"1200"``
+        ``"$18.00"`` -> ``"18"``
+        ``"-3.50"`` -> ``"-3.5"``
+        ``"+42"`` -> ``"42"``
+    """
+    if not raw:
+        return None
+    cleaned = raw.strip().replace(",", "").replace("$", "").strip()
+    if cleaned.startswith("+"):
+        cleaned = cleaned[1:]
+    if not cleaned:
+        return None
+    if "." in cleaned:
+        sign = "-" if cleaned.startswith("-") else ""
+        body = cleaned[1:] if sign else cleaned
+        int_part, frac_part = body.split(".", 1)
+        frac_stripped = frac_part.rstrip("0")
+        if not frac_stripped:
+            cleaned = f"{sign}{int_part or '0'}"
+        else:
+            cleaned = f"{sign}{int_part or '0'}.{frac_stripped}"
+    if cleaned in ("-0", "+0"):
+        cleaned = "0"
+    return cleaned
+
+
+def strip_gsm8k_exemplars(text: str) -> str:
+    """Strip echoed few-shot exemplars and trailing hallucinated Question turns.
+
+    In 8-shot GSM8K prompting, either:
+    1. A full prompt+generation string contains multiple ``Question: ... #### N``
+       exemplar blocks before the final target question, OR
+    2. A prompt-sliced generation region finishes answering the target question
+       and then starts generating a new ``\\nQuestion: ...`` exemplar.
+
+    This helper isolates the target response block so verdict extraction never
+    reads an exemplar's answer.
+    """
+    if not text:
+        return ""
+    out = text
+    # Case 1: full prompt with exemplars starting with "Question: ..."
+    if re.match(r"^\s*(?:Question|Q)\s*:", out, flags=re.IGNORECASE) and re.search(
+        r"Question\s*:.*####", out, flags=re.IGNORECASE | re.DOTALL
+    ):
+        parts = re.split(r"(?:^|\n)\s*(?:Question|Q)\s*:", out, flags=re.IGNORECASE)
+        if len(parts) > 1:
+            last_q = parts[-1]
+            ans_split = re.split(
+                r"\n\s*(?:Answer|A)\s*:", last_q, maxsplit=1, flags=re.IGNORECASE
+            )
+            if len(ans_split) == 2:
+                out = ans_split[1]
+            else:
+                out = last_q
+    # Case 2: prompt-sliced generation that continues into a new "\nQuestion:" turn.
+    stop_match = _EXEMPLAR_TURN_STOP_RE.search(out)
+    if stop_match:
+        out = out[: stop_match.start()]
+    return out.strip()
+
+
+def extract_gsm8k_verdict(text: str) -> str | None:
+    """Extract the normalized numeric verdict from a GSM8K generation step.
+
+    Returns a normalized number string (e.g. ``"18"``, ``"-3.5"``) or ``None``
+    when no explicit answer marker is decodable yet. Never guesses from bare
+    intermediate operands in unfinished reasoning sentences.
+
+    Precedence (after :func:`strip_gsm8k_exemplars`):
+    1. ``#### <number>`` (last match)
+    2. ``\\boxed{<number>}`` (last match)
+    3. Explicit answer phrases (``Final answer: <number>``, ``The answer is <number>``)
+    """
+    cleaned = strip_gsm8k_exemplars(text)
+    if not cleaned:
+        return None
+    for pat in (_GSM8K_HASH_RE, _GSM8K_BOXED_RE, *_GSM8K_PREFIX_RES):
+        matches = pat.findall(cleaned)
+        if matches:
+            return normalize_numeric_answer(str(matches[-1]))
+    return None
+
+
 class TokenizerLike(Protocol):
     """Minimal tokenizer surface the adapter needs (duck-typed).
 
@@ -311,12 +414,16 @@ class DreamSmokeConfig:
     """
 
     model_id: str = DREAM_MODEL_ID
+    task: str = "arcc"
     max_new_tokens: int = 256
     steps: int = 256
     temperature: float = 0.2
     top_p: float = 0.95
     alg: str = "entropy"
     alg_temp: float = 0.0
+    # When > 0, suppresses EOS token logits for the first K denoising steps
+    # via Dream's generation_logits_hook_func (forced deliberation).
+    force_deliberation_steps: int = 0
     # Output locations (relative to repo root unless absolute).
     n_items: int = 5
     out_jsonl: str = "results/dream_arcc_smoke5.jsonl"
@@ -328,12 +435,14 @@ class DreamSmokeConfig:
     def to_dict(self) -> dict[str, Any]:
         return {
             "model_id": self.model_id,
+            "task": self.task,
             "max_new_tokens": self.max_new_tokens,
             "steps": self.steps,
             "temperature": self.temperature,
             "top_p": self.top_p,
             "alg": self.alg,
             "alg_temp": self.alg_temp,
+            "force_deliberation_steps": self.force_deliberation_steps,
             "n_items": self.n_items,
             "out_jsonl": self.out_jsonl,
             "out_ids": self.out_ids,
@@ -415,6 +524,8 @@ def run_dream_arcc_smoke(
     ids = [str(it["id"]) for it in items]
     out_ids.write_text(json.dumps(ids, indent=2) + "\n", encoding="utf-8")
 
+    verdict_fn = extract_gsm8k_verdict if cfg.task.lower() == "gsm8k" else extract_verdict
+
     trajs: list[Trajectory] = []
     sanity: list[dict[str, Any]] = []
     for it in items:
@@ -441,6 +552,20 @@ def run_dream_arcc_smoke(
         prompt_len = int(input_ids.shape[1])
         mask_id = int(getattr(tokenizer, "mask_token_id", 0) or 0)
 
+        gen_kwargs: dict[str, Any] = {}
+        if cfg.force_deliberation_steps > 0:
+            eos_id = getattr(tokenizer, "eos_token_id", None)
+            pad_id = getattr(tokenizer, "pad_token_id", None)
+            suppress_ids = [i for i in (eos_id, pad_id) if isinstance(i, int)]
+
+            def _force_delib_logits_hook(step_idx: Any, x: Any, logits: Any) -> Any:
+                if step_idx is not None and int(step_idx) < cfg.force_deliberation_steps:
+                    for sid in suppress_ids:
+                        logits[..., sid] = float("-inf")
+                return logits
+
+            gen_kwargs["generation_logits_hook_func"] = _force_delib_logits_hook
+
         output = model.diffusion_generate(
             input_ids,
             attention_mask=attn,
@@ -452,6 +577,7 @@ def run_dream_arcc_smoke(
             top_p=cfg.top_p,
             alg=cfg.alg,
             alg_temp=cfg.alg_temp,
+            **gen_kwargs,
         )
         history = list(getattr(output, "history", []))
         sequences = getattr(output, "sequences", None)
@@ -467,6 +593,7 @@ def run_dream_arcc_smoke(
             tokenizer=tokenizer,
             prompt_len=prompt_len,
             mask_token_id=mask_id,
+            verdict_fn=verdict_fn,
         )
         # Sanity 2: final parsed verdict == verdict from sequences.
         if sequences is not None:
@@ -475,7 +602,7 @@ def run_dream_arcc_smoke(
                 seq_text = tokenizer.decode(seq_ids[prompt_len:], skip_special_tokens=True)
                 # sequences may be batched; _as_int_list flattens first row.
                 final_verdict = traj.final_prediction
-                seq_verdict = extract_verdict(seq_text)
+                seq_verdict = verdict_fn(seq_text)
                 sanity.append(
                     {
                         "id": tid,

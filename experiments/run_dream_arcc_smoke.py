@@ -123,6 +123,8 @@ def main(argv=None) -> int:
     ap.add_argument("--top-p", type=float, default=0.95)
     ap.add_argument("--steps", type=int, default=256)
     ap.add_argument("--max-new-tokens", type=int, default=256)
+    ap.add_argument("--task", choices=["arcc", "gsm8k"], default="arcc")
+    ap.add_argument("--force-deliberation-steps", type=int, default=0)
     args = ap.parse_args(argv)
 
     if args.fake:
@@ -144,10 +146,12 @@ def main(argv=None) -> int:
     from traj_eval.adapters.dream import run_dream_arcc_smoke
 
     cfg = DreamSmokeConfig(
+        task=args.task,
         temperature=args.temperature,
         top_p=args.top_p,
         steps=args.steps,
         max_new_tokens=args.max_new_tokens,
+        force_deliberation_steps=args.force_deliberation_steps,
         n_items=len(items),
         out_jsonl=args.out_jsonl,
         out_ids=args.out_ids,

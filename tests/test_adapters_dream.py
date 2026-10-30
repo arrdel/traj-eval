@@ -7,8 +7,11 @@ import json
 
 from traj_eval.adapters.dream import (
     decode_generation_region,
+    extract_gsm8k_verdict,
     extract_verdict,
     history_to_trajectory,
+    normalize_numeric_answer,
+    strip_gsm8k_exemplars,
 )
 from traj_eval.io import load_trajectories, trajectories_to_dicts
 from traj_eval.metrics import flip_rate, verdict_convergence_step
@@ -181,3 +184,34 @@ def test_history_to_trajectory_tracks_answer_first_backfill():
     # At step 2: tokens 20, 30 committed -> 2/3 = 0.6667.
     # At step 3: all 3 committed -> 1.0.
     assert [s.committed_reasoning_fraction for s in traj.steps] == [0.0, 0.3333, 0.6667, 1.0]
+
+
+def test_gsm8k_numeric_normalization_and_extraction():
+    assert normalize_numeric_answer("$1,200.00") == "1200"
+    assert normalize_numeric_answer("-3.50") == "-3.5"
+    assert normalize_numeric_answer("+42") == "42"
+
+    # Intermediate operands without an answer cue must return None (never guess).
+    assert extract_gsm8k_verdict("Janet has 16 eggs and eats 3 for breakfast.") is None
+    # Explicit GSM8K hash marker, boxed answer, and answer prefix.
+    assert extract_gsm8k_verdict("16 - 3 - 4 = 9. 9 * 2 = 18. #### 18") == "18"
+    assert extract_gsm8k_verdict("So the total is \\boxed{1,250}.") == "1250"
+    assert extract_gsm8k_verdict("After adding them up, the final answer is $72.00.") == "72"
+
+
+def test_gsm8k_exemplar_stripping():
+    # Echoed 2-shot exemplars followed by target response that has no verdict yet.
+    echoed_partial = (
+        "Question: What is 2 + 2?\nAnswer: 2 + 2 = 4. #### 4\n\n"
+        "Question: What is 3 * 5?\nAnswer: 3 * 5 = 15. #### 15\n\n"
+        "Question: Janet has 16 eggs...\nAnswer: She eats 3 and bakes 4"
+    )
+    assert extract_gsm8k_verdict(echoed_partial) is None
+
+    # Target response completed, plus a hallucinated trailing Question turn.
+    with_trailing_turn = (
+        "She sells 9 * 2 = 18 dollars. #### 18\n\n"
+        "Question: A train leaves at 3pm... #### 999"
+    )
+    assert strip_gsm8k_exemplars(with_trailing_turn) == "She sells 9 * 2 = 18 dollars. #### 18"
+    assert extract_gsm8k_verdict(with_trailing_turn) == "18"
