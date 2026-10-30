@@ -152,15 +152,20 @@ nothing stronger.
 - If GPUs are full, do NOT start a download-and-eval job. Wait, or run
   `--fake` + tests only, and say so in your update.
 
-## 6. Definition of done for the smoke
+## 6. Definition of done for the smoke (completed 2026-10-29)
 
-- [ ] `python -m pytest -q` passes on your machine, count reported.
-- [ ] `results/dream_arcc_smoke5_input.json` + `ids.json` exist, ids fixed before run.
-- [ ] `results/dream_arcc_smoke5.jsonl` exists, 5 trajectories, one step per history entry.
-- [ ] `results/dream_arcc_smoke5_run_log.json` exists with full sampler + env + git rev.
-- [ ] `results/baselines.md` updated with aggregate (pasted) + undecided count.
-- [ ] Commit pushed with message starting `feat(smoke):` or `fix(smoke):`
-      and a body that states "smoke clean" or "smoke failed: <reason>".
+- [x] `python -m pytest -q` passes on your machine, count reported (38 passed at pull; 46 passed after post-smoke metrics + GSM8K + LLaDA adapter additions).
+- [x] `results/dream_arcc_smoke5_input.json` + `ids.json` exist, ids fixed before run (`4b60d44`).
+- [x] `results/dream_arcc_smoke5.jsonl` exists, 5 trajectories, one step per history entry (`7831ea7`).
+- [x] `results/dream_arcc_smoke5_run_log.json` exists with full sampler + env + git rev (`7831ea7`).
+- [x] `results/baselines.md` updated with aggregate (pasted) + undecided count (`7831ea7`, `5fb1735`).
+- [x] Commit pushed with message starting `feat(smoke):` and a body that states `smoke clean` (`7831ea7`).
+
+Post-smoke additions also landed and pushed (2026-10-29):
+- `5fb1735`: `rationalization_components`, `answer_commitment_step` (`T_commit`), `stability_commitment_lag` (`T_commit - T_stab`), `unwritten_reasoning_at_convergence` (`U`), and per-step commitment tracking in `history_to_trajectory`.
+- `9d38423`: GSM8K numeric extraction (`extract_gsm8k_verdict`, `strip_gsm8k_exemplars`, `normalize_numeric_answer`) and `--force-deliberation-steps` hook.
+- `df94f94`: Pre-registered fixed inputs and IDs for ARC-C CoT 5-item (`dream_arcc_cot_smoke5_*`), GSM8K 5-item (`dream_gsm8k_smoke5_*`), and 64-item suites (`arcc_smoke64_*`, `smoke64_ids.json`, `gsm8k_smoke64_input.json`).
+- `c668e55`: LLaDA adapter (`src/traj_eval/adapters/llada.py`) for `GSAI-ML/LLaDA-8B-Instruct` and `GSAI-ML/LLaDA-1.5` (`mask_id=126336`, EOS/EoT confidence suppression) + CLI `--model-family` support + unit tests (46 total passing).
 
 ## 7. If you get stuck
 
