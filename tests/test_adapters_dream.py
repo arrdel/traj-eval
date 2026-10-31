@@ -56,6 +56,26 @@ def test_extract_verdict_prefix_precedence():
     assert extract_verdict("Step 4: Provide the final answer\nAnswer:") is None
     assert extract_verdict("Step 3: Choose the most likely option\nBased on the analysis") is None
     assert extract_verdict("Option A: wrong.\nOption B: wrong.\n\nFinal answer: C") == "C"
+    # PR #9 regressions (Mercury_402216 & Mercury_412681):
+    # 1. Option enumeration marking B as Correct and D as Incorrect must select B, not D.
+    mercury_402216 = (
+        "Step 3: Compare the given options with the correct equation.\n"
+        "- Option A: Incorrect, as it shows formation.\n"
+        "- Option B: Correct, as it shows the decomposition of water.\n"
+        "- Option C: Incorrect, as it shows formation.\n"
+        "- Option D: Incorrect, as it shows formation."
+    )
+    assert extract_verdict(mercury_402216) == "B"
+    # 2. Truncated option analysis without a conclusion must return None (undecided).
+    mercury_412681 = (
+        "Step 1: Recall the formula\n"
+        "Step 2: Analyze each option\n"
+        "A. Halving the mass will result in a decrease.\n"
+        "B. Halving the mass and doubling the distance...\n"
+        "C. Doubling the mass and halving the distance...\n"
+        "D. Doubling the mass and doubling the distance will result in a decrease, as the"
+    )
+    assert extract_verdict(mercury_412681) is None
 
 
 def test_decode_strips_masks_and_prompt():

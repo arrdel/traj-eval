@@ -19,7 +19,7 @@ Every archetype is constructed so the final answer is correct. Accuracy cannot t
 
 Forced deliberation is not defined on this file. The function only subtracts two accuracies the caller already has.
 
-## Real checkpoints — not run
+## Real checkpoints — status overview
 
 Chosen 17 Oct 2026. Text trio first, because Yeom et al. (arXiv:2608.05687) already published commitment-order numbers on these three and the paper has to be comparable. MMaDA is the later modality holdout from the research plan, not a substitute for LLaDA-1.5 in the first table.
 
@@ -27,10 +27,10 @@ Chosen 17 Oct 2026. Text trio first, because Yeom et al. (arXiv:2608.05687) alre
 |---|---|---|
 | LLaDA-8B-Instruct | `GSAI-ML/LLaDA-8B-Instruct` | Adapter ready (`src/traj_eval/adapters/llada.py`). GPU run pending. |
 | LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | Adapter ready (`src/traj_eval/adapters/llada.py`). GPU run pending. |
-| Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct smoke clean (2026-10-29) + 5-item canonical reasoning smoke clean (2026-10-30). |
+| Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct & reasoning smokes clean + 64-item paired direct & canonical reasoning suites completed (2026-10-30). |
 | MMaDA-8B-MixCoT (holdout) | `Gen-Verse/MMaDA-8B-MixCoT` | Not in the first suite. |
 
-Why nothing was launched: all eight RTX A6000s on this machine were in use (about 43 GB of 49 GB, utilization 100%). The default PyTorch in the base environment is `2.11.0+cu130` and does not see the driver. A later run should use a CUDA 12.1 build, one GPU that is actually free, and a sampler config written down before the job starts.
+Historical note (17 Oct 2026): no checkpoints were run on initial commit because all eight RTX A6000s were occupied (~43 GB of 49 GB, 100% utilization) and the base environment PyTorch (`2.11.0+cu130`) could not see the CUDA 12.1 driver. Subsequent runs below use a pinned `transformers==4.46.2` CUDA environment (`cdr-gpu` on `titan3` and `.venv-gpu` on `ai-lab2`) with one dedicated GPU per run and full run logs.
 
 ### Smoke protocol, to run unchanged once a GPU is free
 
@@ -209,7 +209,7 @@ This list is a **gated pre-registration sequence**, executed one stage at a time
 === traj-eval summary ===
 Trajectories:            5
 Accuracy (final):        0.8000
-Mean flip rate:          0.0126
+Mean flip rate:          0.0000
 Mean rationalization:    0.2068
   [components] early=0.2445 post_change=0.2574 len_growth=0.0299 gated=0.0166
 Early convergence frac:  0.0000
@@ -223,9 +223,9 @@ Mean unwritten @ T_stab: 0.0137
 Per-trajectory:
 id                   final    gold   corr  conv  flip   rat    steps
 --------------------------------------------------------------------
-Mercury_7175875      C        C      Y     224   0.018  0.050  256  
-Mercury_SC_409171    B        B      Y     165   0.019  0.142  256  
-Mercury_SC_408547    C        C      Y     254   0.026  0.404  256  
+Mercury_7175875      C        C      Y     224   0.000  0.050  256  
+Mercury_SC_409171    B        B      Y     165   0.000  0.142  256  
+Mercury_SC_408547    C        C      Y     254   0.000  0.404  256  
 Mercury_407327       D        D      Y     135   0.000  0.232  256  
 MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
 ```
@@ -239,7 +239,7 @@ MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
   "accuracy": 0.8,
   "coverage": 1.0,
   "conditional_accuracy": 0.8,
-  "mean_flip_rate": 0.0126,
+  "mean_flip_rate": 0.0,
   "mean_rationalization_score": 0.2068,
   "mean_gated_rationalization_score": 0.0166,
   "mean_early_factor": 0.2445,
@@ -268,3 +268,96 @@ MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
 | `length_growth` | 0.0000 | 0.0299 | +0.0299 |
 | `score` | 0.3950 | 0.2068 | -0.1882 |
 | `gated_score` | 0.0000 | 0.0166 | +0.0166 |
+
+## Dream-v0-Instruct-7B — ARC-C 64-item paired direct vs. canonical reasoning suites (Stage 2)
+
+- **Date (UTC):** 2026-10-30
+- **Job IDs:** `dream_arcc_smoke64_direct` (GPU 0) and `dream_arcc_smoke64_reasoning` (GPU 1)
+- **Git revision (`git rev-parse HEAD` at run):** `0870b06e2d055dfde520c6e5a5be690535e52fab`
+- **Host & Environment:** `ai-lab2.dyn.gsu.edu` (`.venv-gpu`: `Python 3.12.2`, `torch 2.6.0+cu124`, `transformers 4.46.2`)
+- **GPUs:** `CUDA_VISIBLE_DEVICES=0` (`direct_64`) and `CUDA_VISIBLE_DEVICES=1` (`reasoning_64`), `NVIDIA GeForce RTX 4090` (`24210 MiB` free / `2 MiB` used / `0%` util at launch)
+- **`nvidia-smi` at launch (`ai-lab2`):**
+  ```
+  index, name, memory.used [MiB], memory.free [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24210 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24210 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24210 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24210 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config (identical across both conditions):** `model_family=dream, temperature=0.2, top_p=0.95, alg=entropy, alg_temp=0.0, steps=256, max_new_tokens=256, force_deliberation_steps=0, frontier_width=None`
+- **Artifacts:**
+  - Fixed IDs: `results/arcc_smoke64_ids.json` (`n = 64`)
+  - Direct condition: `results/arcc_smoke64_direct_input.json` -> `results/dream_arcc_smoke64_direct.jsonl`, `results/dream_arcc_smoke64_direct_run_log.json`, `results/dream_arcc_smoke64_direct_results.json`
+  - Canonical reasoning condition: `results/arcc_smoke64_reasoning_input.json` -> `results/dream_arcc_smoke64_reasoning.jsonl`, `results/dream_arcc_smoke64_reasoning_run_log.json`, `results/dream_arcc_smoke64_reasoning_results.json`
+  - Side-by-side comparison JSON: `results/dream_arcc_smoke64_direct_vs_reasoning.json`
+- **Undecided count:**
+  - `direct_64`: **0 undecided** (64 / 64 non-null at final step).
+  - `reasoning_64`: **1 undecided** (63 / 64 non-null at final step; `Mercury_412681` truncated during option analysis before reaching a conclusion, so `prediction = null`, `coverage = 0.9844`, `conditional_accuracy = 0.8413`, `accuracy = 0.8281`).
+
+### Pasted aggregate JSON — `direct_64` (`results/dream_arcc_smoke64_direct_results.json`)
+
+```json
+{
+  "n_trajectories": 64,
+  "n_scored_for_accuracy": 64,
+  "accuracy": 0.8906,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.8906,
+  "mean_flip_rate": 0.0,
+  "mean_rationalization_score": 0.3948,
+  "mean_gated_rationalization_score": 0.0012,
+  "mean_early_factor": 0.9852,
+  "mean_post_change_rate": 0.0001,
+  "mean_length_growth": 0.0035,
+  "early_convergence_fraction": 1.0,
+  "disagreement_rate": 0.0312,
+  "sbw_lockin_rate": 0.1094,
+  "mean_convergence_step": 3.7969,
+  "median_convergence_step": 3.0,
+  "mean_convergence_fraction": 0.0148,
+  "median_convergence_fraction": 0.0117,
+  "mean_answer_commitment_step": 3.7969,
+  "mean_stability_commitment_lag": 0.0,
+  "mean_unwritten_reasoning_at_convergence": 0.0,
+  "mean_order_gap": 0.0109
+}
+```
+
+### Pasted aggregate JSON — `reasoning_64` (`results/dream_arcc_smoke64_reasoning_results.json`)
+
+```json
+{
+  "n_trajectories": 64,
+  "n_scored_for_accuracy": 63,
+  "accuracy": 0.8281,
+  "coverage": 0.9844,
+  "conditional_accuracy": 0.8413,
+  "mean_flip_rate": 0.0106,
+  "mean_rationalization_score": 0.1703,
+  "mean_gated_rationalization_score": 0.0125,
+  "mean_early_factor": 0.2559,
+  "mean_post_change_rate": 0.1597,
+  "mean_length_growth": 0.0203,
+  "early_convergence_fraction": 0.0794,
+  "disagreement_rate": 0.5469,
+  "sbw_lockin_rate": 0.0159,
+  "mean_convergence_step": 189.4603,
+  "median_convergence_step": 205.0,
+  "mean_convergence_fraction": 0.7401,
+  "median_convergence_fraction": 0.8008,
+  "mean_answer_commitment_step": 192.2857,
+  "mean_stability_commitment_lag": 2.8254,
+  "mean_unwritten_reasoning_at_convergence": 0.0145,
+  "mean_order_gap": 0.3762
+}
+```
+
+### Side-by-side rationalization components (`direct_64` vs `reasoning_64`)
+
+| Component | `direct_64` (`n=64`) | `reasoning_64` (`n=64`) | Delta (`reasoning_64 - direct_64`) |
+|---|---:|---:|---:|
+| `early_factor` | 0.9852 | 0.2559 | -0.7293 |
+| `post_change_rate` | 0.0001 | 0.1597 | +0.1596 |
+| `length_growth` | 0.0035 | 0.0203 | +0.0168 |
+| `score` | 0.3948 | 0.1703 | -0.2245 |
+| `gated_score` | 0.0012 | 0.0125 | +0.0113 |

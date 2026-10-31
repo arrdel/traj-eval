@@ -1,0 +1,735 @@
+{
+  "config": {
+    "model_id": "Dream-org/Dream-v0-Instruct-7B",
+    "task": "arcc",
+    "max_new_tokens": 256,
+    "steps": 256,
+    "temperature": 0.2,
+    "top_p": 0.95,
+    "alg": "entropy",
+    "alg_temp": 0.0,
+    "force_deliberation_steps": 0,
+    "frontier_width": null,
+    "n_items": 64,
+    "out_jsonl": "results/dream_arcc_smoke64_reasoning.jsonl",
+    "out_ids": "results/arcc_smoke64_ids.json",
+    "out_log": "results/dream_arcc_smoke64_reasoning_run_log.json",
+    "extra": {}
+  },
+  "git_revision": "0870b06e2d055dfde520c6e5a5be690535e52fab",
+  "env": {
+    "cuda_visible_devices": "1",
+    "device": "cuda:0",
+    "gpu_name": "NVIDIA GeForce RTX 4090"
+  },
+  "n_trajectories": 64,
+  "ids": [
+    "Mercury_7175875",
+    "Mercury_SC_409171",
+    "Mercury_SC_408547",
+    "Mercury_407327",
+    "MCAS_2006_9_44",
+    "Mercury_7270393",
+    "MCAS_2014_5_7",
+    "Mercury_7086660",
+    "Mercury_7168805",
+    "MCAS_2003_8_11",
+    "Mercury_7250058",
+    "Mercury_7012740",
+    "Mercury_LBS10610",
+    "Mercury_SC_407400",
+    "Mercury_7212993",
+    "Mercury_SC_413240",
+    "Mercury_7186358",
+    "Mercury_7166425",
+    "MDSA_2007_8_3",
+    "Mercury_7094290",
+    "Mercury_7186568",
+    "Mercury_402216",
+    "Mercury_404894",
+    "MCAS_2002_8_11",
+    "Mercury_SC_405086",
+    "Mercury_SC_408324",
+    "Mercury_7218820",
+    "Mercury_412202",
+    "Mercury_SC_409139",
+    "Mercury_400687",
+    "Mercury_7171605",
+    "Mercury_7210245",
+    "AKDE&ED_2008_4_25",
+    "AKDE&ED_2008_4_19",
+    "Mercury_SC_400402",
+    "Mercury_7234308",
+    "ACTAAP_2014_5_8",
+    "Mercury_400407",
+    "Mercury_7116288",
+    "MCAS_2004_9_15-v1",
+    "NYSEDREGENTS_2015_4_26",
+    "Mercury_SC_401620",
+    "Mercury_400877",
+    "Mercury_7174213",
+    "NYSEDREGENTS_2008_8_34",
+    "Mercury_7212398",
+    "Mercury_SC_401290",
+    "Mercury_SC_402120",
+    "Mercury_184975",
+    "Mercury_SC_400578",
+    "MCAS_2001_8_4",
+    "MCAS_2003_5_33",
+    "Mercury_7068513",
+    "AKDE&ED_2008_4_26",
+    "Mercury_7235638",
+    "MDSA_2009_5_20",
+    "Mercury_178325",
+    "Mercury_7212678",
+    "TAKS_2009_8_32",
+    "Mercury_412681",
+    "Mercury_400440",
+    "Mercury_SC_416529",
+    "MCAS_2006_8_1",
+    "TIMSS_2003_8_pg80"
+  ],
+  "sanity": [
+    {
+      "id": "Mercury_7175875",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_7175875",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_409171",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_409171",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_408547",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_408547",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_407327",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_407327",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MCAS_2006_9_44",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "MCAS_2006_9_44",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7270393",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_7270393",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MCAS_2014_5_7",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "MCAS_2014_5_7",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7086660",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_7086660",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7168805",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_7168805",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MCAS_2003_8_11",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "MCAS_2003_8_11",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7250058",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_7250058",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7012740",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "Mercury_7012740",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_LBS10610",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_LBS10610",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_407400",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_407400",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7212993",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_7212993",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_413240",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_413240",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7186358",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_7186358",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7166425",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_7166425",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MDSA_2007_8_3",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "MDSA_2007_8_3",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7094290",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_7094290",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7186568",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_7186568",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_402216",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_402216",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_404894",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "Mercury_404894",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MCAS_2002_8_11",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "MCAS_2002_8_11",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_405086",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_405086",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_408324",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_408324",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7218820",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_7218820",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_412202",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "Mercury_412202",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_409139",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_409139",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_400687",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_400687",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7171605",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_7171605",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7210245",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_7210245",
+      "last_step_non_null": true
+    },
+    {
+      "id": "AKDE&ED_2008_4_25",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "AKDE&ED_2008_4_25",
+      "last_step_non_null": true
+    },
+    {
+      "id": "AKDE&ED_2008_4_19",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "AKDE&ED_2008_4_19",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_400402",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_400402",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7234308",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_7234308",
+      "last_step_non_null": true
+    },
+    {
+      "id": "ACTAAP_2014_5_8",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "ACTAAP_2014_5_8",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_400407",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_400407",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7116288",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_7116288",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MCAS_2004_9_15-v1",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "MCAS_2004_9_15-v1",
+      "last_step_non_null": true
+    },
+    {
+      "id": "NYSEDREGENTS_2015_4_26",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "NYSEDREGENTS_2015_4_26",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_401620",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_401620",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_400877",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_400877",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7174213",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_7174213",
+      "last_step_non_null": true
+    },
+    {
+      "id": "NYSEDREGENTS_2008_8_34",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "NYSEDREGENTS_2008_8_34",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7212398",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_7212398",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_401290",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_401290",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_402120",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_402120",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_184975",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "Mercury_184975",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_400578",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_400578",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MCAS_2001_8_4",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "MCAS_2001_8_4",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MCAS_2003_5_33",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "MCAS_2003_5_33",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7068513",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "Mercury_7068513",
+      "last_step_non_null": true
+    },
+    {
+      "id": "AKDE&ED_2008_4_26",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "AKDE&ED_2008_4_26",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7235638",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_7235638",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MDSA_2009_5_20",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "MDSA_2009_5_20",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_178325",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_178325",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_7212678",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "Mercury_7212678",
+      "last_step_non_null": true
+    },
+    {
+      "id": "TAKS_2009_8_32",
+      "final_verdict": "A",
+      "sequences_verdict": "A",
+      "match": true
+    },
+    {
+      "id": "TAKS_2009_8_32",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_412681",
+      "final_verdict": null,
+      "sequences_verdict": null,
+      "match": true
+    },
+    {
+      "id": "Mercury_412681",
+      "last_step_non_null": false
+    },
+    {
+      "id": "Mercury_400440",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "Mercury_400440",
+      "last_step_non_null": true
+    },
+    {
+      "id": "Mercury_SC_416529",
+      "final_verdict": "B",
+      "sequences_verdict": "B",
+      "match": true
+    },
+    {
+      "id": "Mercury_SC_416529",
+      "last_step_non_null": true
+    },
+    {
+      "id": "MCAS_2006_8_1",
+      "final_verdict": "D",
+      "sequences_verdict": "D",
+      "match": true
+    },
+    {
+      "id": "MCAS_2006_8_1",
+      "last_step_non_null": true
+    },
+    {
+      "id": "TIMSS_2003_8_pg80",
+      "final_verdict": "C",
+      "sequences_verdict": "C",
+      "match": true
+    },
+    {
+      "id": "TIMSS_2003_8_pg80",
+      "last_step_non_null": true
+    }
+  ],
+  "null_rule": "None = no verdict yet, not a distinct answer. Flip counted only between two non-null differing verdicts. Convergence over non-null sequence, mapped to original index."
+}

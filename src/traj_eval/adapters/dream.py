@@ -72,17 +72,39 @@ DREAM_MODEL_ID = "Dream-org/Dream-v0-Instruct-7B"
 # Answer-prefix patterns take precedence over a bare standalone letter.
 # Require same-line whitespace/colon ([ \t:]*) and a word boundary (\b([A-D])\b)
 # around the option letter so headings like "Provide the final answer\nAnswer: C"
-# or "Choose the most likely option\nBased on..." never match the first letter
-# of the next word ("Answer" -> "A", "Based" -> "B").
+# or "Analyze each option\nA." never match across newlines or into the first
+# letter of the next word. For "option <letter>", require an affirmative
+# predicate ("Option B is correct", "Option B: Correct") so option-enumeration
+# rejections ("- Option D: Incorrect") are not mistaken for selected answers.
 # Across all prefix patterns, we return the match that appears LAST in text order.
 _ANSWER_PREFIX_RES = [
-    re.compile(r"\\boxed\{\s*\(?\s*\b([A-D])\b\s*\)?\s*\}", re.IGNORECASE),
-    re.compile(r"final\s+answer\s*(?:is\s*)?[ \t:]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
-    re.compile(r"(?:correct\s+)?answer\s+is[ \t:]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
-    re.compile(r"\banswer[ \t]*:[ \t]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
-    re.compile(r"\boption[ \t:]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
-    re.compile(r"\bchoice\s+is[ \t:]*\(?\s*\b([A-D])\b\s*\)?", re.IGNORECASE),
+    re.compile(r"\\boxed\{[ \t]*\(?[ \t]*\b([A-D])\b[ \t]*\)?[ \t]*\}", re.IGNORECASE),
+    re.compile(r"final[ \t]+answer[ \t]*(?:is[ \t]*)?[ \t:]*\(?[ \t]*\b([A-D])\b[ \t]*\)?", re.IGNORECASE),
+    re.compile(
+        r"(?:correct|right|best|most[ \t]+likely)[ \t]+(?:answer|option|choice)[ \t]*(?:is)?[ \t:]*\(?[ \t]*\b([A-D])\b[ \t]*\)?",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\banswer[ \t]+is[ \t:]*\(?[ \t]*\b([A-D])\b[ \t]*\)?", re.IGNORECASE),
+    re.compile(r"\banswer[ \t]*:[ \t]*\(?[ \t]*\b([A-D])\b[ \t]*\)?", re.IGNORECASE),
+    re.compile(r"\bchoice[ \t]+is[ \t:]*\(?[ \t]*\b([A-D])\b[ \t]*\)?", re.IGNORECASE),
+    re.compile(
+        r"\boption[ \t]*\(?[ \t]*\b([A-D])\b[ \t]*\)?[ \t]*(?:is[ \t]+|:[ \t]*)(?:the[ \t]+)?(?:correct|right|best)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\boption[ \t]*\(?[ \t]*\b([A-D])\b[ \t]*\)?(?:[ \t]*,[ \t]*\"[^\"]+\"[ \t]*,)?[ \t]+is[ \t]+(?:an[ \t]+example|correct|the[ \t]+correct|the[ \t]+best)\b",
+        re.IGNORECASE,
+    ),
 ]
+# Option-enumeration lines in CoT (e.g. "A. Planetary...", "- Option D: Incorrect...")
+_OPTION_ENUM_LINE_RE = re.compile(
+    r"(?:^|\n)[ \t]*(?:[-*•][ \t]*)?(?:option[ \t]+)?[A-D][.):][ \t]+[^\n]*",
+    re.IGNORECASE,
+)
+_UNFINISHED_COT_RE = re.compile(
+    r"\b(?:step[ \t]+\d|analyze[ \t]+(?:each|the)[ \t]+option)",
+    re.IGNORECASE,
+)
 # Clause-initial English indefinite article "A <lowercase_word>" (excluding
 # linking verbs like "A is/was/fits/matches") so partial CoT sentences such
 # as "A planet rotates faster..." do not emit a false "A" verdict.
@@ -98,12 +120,13 @@ def extract_verdict(text: str) -> str | None:
     Returns ``"A"``..``"D"`` or ``None`` when no letter is decodable.
     Never guesses.
 
-    Precedence: answer-prefix patterns (``\\boxed{B}``, ``final answer: C``,
-    ``answer is (B)``, ``Answer: A``, ``option B``) win over a bare
+    Precedence: affirmative answer-prefix patterns (``\\boxed{B}``,
+    ``final answer: C``, ``answer is (B)``, ``Answer: A``,
+    ``Option B is correct``, ``- Option B: Correct``) win over a bare
     standalone letter, and the last such match in text order wins.
-    Otherwise the last standalone ``\\b([A-D])\\b`` match wins after
-    stripping clause-initial English indefinite articles (``"A planet..."``).
-    ``None`` for empty / all-mask text.
+    In structured multi-step CoT traces without an affirmative answer
+    selection yet (e.g. truncated option analysis), returns ``None``
+    rather than guessing from option-enumeration headers.
     """
     if not text or not text.strip():
         return None
@@ -117,7 +140,10 @@ def extract_verdict(text: str) -> str | None:
                 best_letter = str(m.group(1)).upper()
     if best_letter is not None:
         return best_letter
-    scrubbed = _ARTICLE_A_RE.sub(r"\1\2", text)
+    if _UNFINISHED_COT_RE.search(text):
+        return None
+    scrubbed = _OPTION_ENUM_LINE_RE.sub("", text)
+    scrubbed = _ARTICLE_A_RE.sub(r"\1\2", scrubbed)
     matches = _STANDALONE_LETTER_RE.findall(scrubbed)
     if matches:
         return str(matches[-1]).upper()
