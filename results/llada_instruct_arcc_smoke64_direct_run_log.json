@@ -18,7 +18,7 @@
     "out_log": "results/llada_instruct_arcc_smoke64_direct_run_log.json",
     "extra": {}
   },
-  "git_revision": "a76e1e9b653338cf16b48418d836411ea7a7dcdd",
+  "git_revision": "91647a5aa4c8f10a7ef7ba52915730c028fc72bd",
   "env": {
     "cuda_visible_devices": "1",
     "device": "cuda:0"

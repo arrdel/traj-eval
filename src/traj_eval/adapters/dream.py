@@ -315,6 +315,52 @@ def decode_generation_region(
     return tokenizer.decode(gen_ids, skip_special_tokens=True)
 
 
+_ANSWER_FIRST_HEADER_RE = re.compile(
+    r"^\s*(?:\*\*)*\s*(?:final[ \t]+)?answer[ \t]*:[ \t]*\(?[ \t]*\b([A-D])\b[ \t]*\)?",
+    re.IGNORECASE,
+)
+
+
+def _locate_verdict_char_span(text: str, target: str) -> tuple[int, int] | None:
+    """Locate the character span ``(start, end)`` of the selected verdict in ``text``.
+
+    1. If ``text`` begins with an answer-first header (``"Answer: <target>"``),
+       returns the character span of that initial ``<target>`` so later
+       restatements inside a post-hoc explanation never override the primary
+       direct-answer commitment step.
+    2. Otherwise, checks explicit answer-prefix patterns (``_ANSWER_PREFIX_RES``
+       for A-D or GSM8K markers for numeric targets) and returns the last match
+       whose captured value normalizes to ``target``.
+    """
+    if not text or not target:
+        return None
+    m_head = _ANSWER_FIRST_HEADER_RE.match(text)
+    if m_head and m_head.group(1).upper() == target:
+        return (m_head.start(1), m_head.end(1))
+
+    best_pos: tuple[int, int] | None = None
+    best_span: tuple[int, int] | None = None
+    for pat in _ANSWER_PREFIX_RES:
+        for m in pat.finditer(text):
+            if str(m.group(1)).upper() == target:
+                pos = (m.end(), m.start())
+                if best_pos is None or pos >= best_pos:
+                    best_pos = pos
+                    best_span = (m.start(1), m.end(1))
+    if best_span is not None:
+        return best_span
+
+    for pat in (_GSM8K_HASH_RE, _GSM8K_BOXED_RE, *_GSM8K_PREFIX_RES):
+        for m in pat.finditer(text):
+            norm = normalize_numeric_answer(str(m.group(1)))
+            if norm is not None and norm.upper() == target:
+                pos = (m.end(), m.start())
+                if best_pos is None or pos >= best_pos:
+                    best_pos = pos
+                    best_span = (m.start(1), m.end(1))
+    return best_span
+
+
 def compute_step_commitments(
     history: Sequence[Any],
     prompt_len: int,
@@ -331,10 +377,13 @@ def compute_step_commitments(
     Content positions ``C`` are canvas positions whose final token is
     non-mask and decodes to a non-empty string with
     ``skip_special_tokens=True`` (excluding trailing EOS/padding tokens).
-    When ``final_verdict`` is non-null, the answer position ``a`` is the
-    last position in ``C`` whose decoded piece contains ``final_verdict``
-    (or ``C[-1]`` if the verdict spans subwords), and the rationale-side
-    region is ``R = [j for j in C if j < a]``.
+    When ``final_verdict`` is non-null, the answer position ``a`` is
+    localized via :func:`_locate_verdict_char_span` (falling back to the
+    last exact/substring token match in ``C``). Following Kim & Choi (2026)
+    Section 3.2, the rationale-side region is ``R = [j for j in C if j < a]``
+    for rationale-first formats and ``R = [j for j in C if j > a]`` for
+    answer-first formats (where ``Answer: <letter>`` appears at the start of
+    the response and the explanation follows it).
     """
     n_steps = len(history)
     if n_steps == 0:
@@ -367,6 +416,8 @@ def compute_step_commitments(
     # Content positions: non-mask final tokens that decode to non-empty text.
     content_pos: list[int] = []
     pieces: dict[int, str] = {}
+    token_spans: dict[int, tuple[int, int]] = {}
+    cursor = 0
     for j, tok_id in enumerate(final_row):
         if tok_id == mask_id:
             continue
@@ -374,30 +425,58 @@ def compute_step_commitments(
         if piece:
             content_pos.append(j)
             pieces[j] = piece
+            token_spans[j] = (cursor, cursor + len(piece))
+            cursor += len(piece)
 
     if not content_pos or final_verdict is None:
         return [(False, 0.0) for _ in range(n_steps)]
 
     target = final_verdict.strip().upper()
     ans_pos: int | None = None
-    # Pass 1: exact match after stripping whitespace and punctuation, scanning from end.
-    if target:
+    joined_text = "".join(pieces[j] for j in content_pos)
+    char_span = _locate_verdict_char_span(joined_text, target)
+    if char_span is not None:
+        s_char, e_char = char_span
+        overlapping = [
+            j
+            for j in content_pos
+            if token_spans[j][0] < e_char and token_spans[j][1] > s_char
+        ]
+        if overlapping:
+            for j in reversed(overlapping):
+                cleaned_piece = re.sub(r"[\s()\[\]{}:.,;\"'`$*]+", "", pieces[j]).upper()
+                if cleaned_piece == target or target in pieces[j].upper():
+                    ans_pos = j
+                    break
+            if ans_pos is None:
+                ans_pos = overlapping[-1]
+
+    # Fallback Pass 1: exact match after stripping whitespace and punctuation, scanning from end.
+    if ans_pos is None and target:
         for j in reversed(content_pos):
-            cleaned_piece = re.sub(r"[\s()\[\]{}:.,;\"'`$]+", "", pieces[j]).upper()
+            cleaned_piece = re.sub(r"[\s()\[\]{}:.,;\"'`$*]+", "", pieces[j]).upper()
             if cleaned_piece == target:
                 ans_pos = j
                 break
-    # Pass 2: fallback substring match if no exact token match exists.
+    # Fallback Pass 2: substring match if no exact token match exists.
     if ans_pos is None and target:
         for j in reversed(content_pos):
             if target in pieces[j].upper():
                 ans_pos = j
                 break
-    # Pass 3: fallback to last content token.
+    # Fallback Pass 3: last content token.
     if ans_pos is None:
         ans_pos = content_pos[-1]
 
-    rationale_pos = [j for j in content_pos if j < ans_pos]
+    before_pos = [j for j in content_pos if j < ans_pos]
+    after_pos = [j for j in content_pos if j > ans_pos]
+    if len(before_pos) <= 4 and len(after_pos) > len(before_pos):
+        # Answer-first format (e.g. "Answer: C\n\nWhen a planet rotates..."):
+        # rationale tokens are the post-answer explanation positions.
+        rationale_pos = after_pos
+    else:
+        rationale_pos = before_pos
+
     out: list[tuple[bool, float]] = []
     for t in range(n_steps):
         ans_comm = tau[ans_pos] <= t

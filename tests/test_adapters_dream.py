@@ -285,3 +285,50 @@ def test_commitment_exact_match_ignores_trailing_substring_rationale():
     # Rationale before ans_pos (pos 2 -> token 31) is pos 0 (tok 20) and pos 1 (tok 30):
     # at step 1, tok 30 is committed and tok 20 is masked -> 1/2 = 0.5.
     assert [s.committed_reasoning_fraction for s in traj.steps] == [0.0, 0.5, 1.0]
+
+
+def test_commitment_answer_first_header_ignores_later_explanation_restatement():
+    # Reproduces PR #20 / PR #14 LLaDA direct-answer trace (Mercury_7175875):
+    # "Answer: C" commits at step 1 (positions 0, 1), then post-answer explanation
+    # tokens commit at steps 2 and 3, including a trailing restatement of "C" at pos 4.
+    from traj_eval.metrics import (
+        answer_commitment_step,
+        order_gap,
+        stability_commitment_lag,
+        unwritten_reasoning_at_convergence,
+    )
+
+    tok = FakeTokenizer(
+        {
+            10: "P",
+            30: "Answer: ",
+            31: "C",
+            40: "\n\nWhen a planet rotates faster, ",
+            41: "days become shorter. Therefore ",
+            42: " is most likely.",
+            999: "",
+        }
+    )
+    history = [
+        [10, 999, 999, 999, 999, 999, 999],
+        [10, 30, 31, 999, 999, 999, 999],
+        [10, 30, 31, 40, 41, 999, 999],
+        [10, 30, 31, 40, 41, 31, 42],
+    ]
+    traj = history_to_trajectory(
+        traj_id="Mercury_7175875",
+        prompt="Q?",
+        gold_answer="C",
+        history=history,
+        tokenizer=tok,
+        prompt_len=1,
+        mask_token_id=999,
+    )
+    assert [s.prediction for s in traj.steps] == [None, "C", "C", "C"]
+    # Answer token at pos 1 ("Answer: C") committed at step 1, NOT step 3's restatement.
+    assert answer_commitment_step(traj) == 1
+    assert stability_commitment_lag(traj) == 0
+    # Post-answer rationale (positions 2, 3, 4, 5) is 0% committed at step 1 -> U = 1.0.
+    assert unwritten_reasoning_at_convergence(traj) == 1.0
+    assert [s.committed_reasoning_fraction for s in traj.steps] == [0.0, 0.0, 0.5, 1.0]
+    assert order_gap(traj) == -0.25
