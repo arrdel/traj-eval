@@ -1,0 +1,148 @@
+{
+  "base_label": "unrestricted",
+  "target_label": "eos_suppression_k64",
+  "base_aggregate": {
+    "n_trajectories": 5,
+    "n_scored_for_accuracy": 5,
+    "accuracy": 1.0,
+    "coverage": 1.0,
+    "conditional_accuracy": 1.0,
+    "mean_flip_rate": 0.0,
+    "mean_rationalization_score": 0.395,
+    "mean_gated_rationalization_score": 0.0,
+    "mean_early_factor": 0.9875,
+    "mean_post_change_rate": 0.0,
+    "mean_length_growth": 0.0,
+    "early_convergence_fraction": 1.0,
+    "disagreement_rate": 0.0,
+    "sbw_lockin_rate": 0.0,
+    "mean_convergence_step": 3.2,
+    "median_convergence_step": 3.0,
+    "mean_convergence_fraction": 0.0125,
+    "median_convergence_fraction": 0.0117,
+    "mean_answer_commitment_step": null,
+    "mean_stability_commitment_lag": null,
+    "mean_unwritten_reasoning_at_convergence": null,
+    "mean_order_gap": null
+  },
+  "target_aggregate": {
+    "n_trajectories": 5,
+    "n_scored_for_accuracy": 5,
+    "accuracy": 0.8,
+    "coverage": 1.0,
+    "conditional_accuracy": 0.8,
+    "mean_flip_rate": 0.0008,
+    "mean_rationalization_score": 0.7962,
+    "mean_gated_rationalization_score": 0.6647,
+    "mean_early_factor": 0.9617,
+    "mean_post_change_rate": 0.5287,
+    "mean_length_growth": 1.0,
+    "early_convergence_fraction": 1.0,
+    "disagreement_rate": 1.0,
+    "sbw_lockin_rate": 0.2,
+    "mean_convergence_step": 9.8,
+    "median_convergence_step": 3.0,
+    "mean_convergence_fraction": 0.0383,
+    "median_convergence_fraction": 0.0117,
+    "mean_answer_commitment_step": 70.0,
+    "mean_stability_commitment_lag": 60.2,
+    "mean_unwritten_reasoning_at_convergence": 0.4733,
+    "mean_order_gap": 0.1359
+  },
+  "rationalization_components_side_by_side": {
+    "early_factor": {
+      "unrestricted": 0.9875,
+      "eos_suppression_k64": 0.9617,
+      "delta": -0.0258
+    },
+    "post_change_rate": {
+      "unrestricted": 0.0,
+      "eos_suppression_k64": 0.5287,
+      "delta": 0.5287
+    },
+    "length_growth": {
+      "unrestricted": 0.0,
+      "eos_suppression_k64": 1.0,
+      "delta": 1.0
+    },
+    "score": {
+      "unrestricted": 0.395,
+      "eos_suppression_k64": 0.7962,
+      "delta": 0.4012
+    },
+    "gated_score": {
+      "unrestricted": 0.0,
+      "eos_suppression_k64": 0.6647,
+      "delta": 0.6647
+    }
+  },
+  "accuracy_delta": {
+    "base_accuracy": 1.0,
+    "target_accuracy": 0.8,
+    "delta": -0.19999999999999996,
+    "relative_drop": 0.19999999999999996
+  },
+  "coverage_decomposition": {
+    "base_coverage": 1.0,
+    "target_coverage": 1.0,
+    "base_conditional_accuracy": 1.0,
+    "target_conditional_accuracy": 0.8,
+    "base_accuracy": 1.0,
+    "target_accuracy": 0.8,
+    "delta_accuracy": -0.2,
+    "coverage_effect": 0.0,
+    "conditional_accuracy_effect": -0.2
+  },
+  "paired_bootstrap": {
+    "accuracy": {
+      "metric": "accuracy",
+      "n_paired": 5,
+      "base_mean": 1.0,
+      "target_mean": 0.8,
+      "delta": -0.2,
+      "ci_low": -0.6,
+      "ci_high": 0.0,
+      "ci_level": 0.9
+    },
+    "flip_rate": {
+      "metric": "flip_rate",
+      "n_paired": 5,
+      "base_mean": 0.0,
+      "target_mean": 0.0008,
+      "delta": 0.0008,
+      "ci_low": 0.0,
+      "ci_high": 0.0024,
+      "ci_level": 0.9
+    },
+    "rationalization_score": {
+      "metric": "rationalization_score",
+      "n_paired": 5,
+      "base_mean": 0.395,
+      "target_mean": 0.7962,
+      "delta": 0.4012,
+      "ci_low": 0.3128,
+      "ci_high": 0.493,
+      "ci_level": 0.9
+    },
+    "gated_rationalization_score": {
+      "metric": "gated_rationalization_score",
+      "n_paired": 5,
+      "base_mean": 0.0,
+      "target_mean": 0.6647,
+      "delta": 0.6647,
+      "ci_low": 0.523,
+      "ci_high": 0.8121,
+      "ci_level": 0.9
+    },
+    "convergence_fraction": {
+      "metric": "convergence_fraction",
+      "n_paired": 5,
+      "base_mean": 0.0125,
+      "target_mean": 0.0383,
+      "delta": 0.0258,
+      "ci_low": 0.0,
+      "ci_high": 0.0773,
+      "ci_level": 0.9
+    }
+  }
+}
