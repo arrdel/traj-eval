@@ -531,3 +531,142 @@ MCAS_2006_9_44       B        D      N     37    0.004  0.638  256
 | `length_growth` | 0.0000 | 1.0000 | +1.0000 |
 | `score` | 0.3950 | 0.7962 | +0.4012 |
 | `gated_score` | 0.0000 | 0.6647 | +0.6647 |
+
+## LLaDA-8B-Instruct — ARC-C 64-item direct-answer suite (smoke clean (64/64 decided))
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `llada_instruct_arcc_smoke64_direct`
+- **Git revision (`git rev-parse HEAD` at run):** `a76e1e9b653338cf16b48418d836411ea7a7dcdd`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `1` (`CUDA_VISIBLE_DEVICES=1`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 16944 MiB, 24564 MiB, 98 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 1380 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 18532 MiB, 24564 MiB, 99 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-instruct, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/arcc_smoke64_direct_input.json`
+  - Fixed IDs: `results/arcc_smoke64_ids.json`
+  - Trajectories: `results/llada_instruct_arcc_smoke64_direct.jsonl`
+  - Run log: `results/llada_instruct_arcc_smoke64_direct_run_log.json`
+  - Scored output: `results/llada_instruct_arcc_smoke64_direct_results.json`
+- **Undecided count:** **0 undecided** (64 / 64 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            64
+Accuracy (final):        0.8750
+Mean flip rate:          0.0001
+Mean rationalization:    0.9917
+  [components] early=0.9826 post_change=1.0000 len_growth=0.9929 gated=0.9818
+Early convergence frac:  0.9844
+Mean convergence step:   4.45
+Median convergence step: 2.00
+Mean convergence frac:   0.0174
+Mean T_commit step:      144.67
+Mean lag (T_comm-T_stab):140.22
+Mean unwritten @ T_stab: 0.7884
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      C        C      Y     2     0.000  0.997  256  
+Mercury_SC_409171    B        B      Y     2     0.000  0.997  256  
+Mercury_SC_408547    C        C      Y     2     0.000  0.997  256  
+Mercury_407327       D        D      Y     2     0.000  0.997  256  
+MCAS_2006_9_44       D        D      Y     2     0.000  0.997  256  
+Mercury_7270393      B        B      Y     2     0.000  0.997  256  
+MCAS_2014_5_7        C        C      Y     2     0.000  0.997  256  
+Mercury_7086660      C        C      Y     2     0.000  0.997  256  
+Mercury_7168805      B        B      Y     2     0.000  0.997  256  
+MCAS_2003_8_11       A        A      Y     0     0.000  1.000  256  
+Mercury_7250058      C        B      N     2     0.000  0.997  256  
+Mercury_7012740      A        A      Y     2     0.000  0.997  256  
+Mercury_LBS10610     C        C      Y     2     0.000  0.997  256  
+Mercury_SC_407400    C        C      Y     2     0.000  0.997  256  
+Mercury_7212993      C        C      Y     2     0.000  0.997  256  
+Mercury_SC_413240    A        A      Y     2     0.000  0.997  256  
+Mercury_7186358      C        C      Y     2     0.000  0.997  256  
+Mercury_7166425      B        B      Y     2     0.000  0.997  256  
+MDSA_2007_8_3        A        A      Y     2     0.000  0.997  256  
+Mercury_7094290      C        C      Y     2     0.000  0.997  256  
+Mercury_7186568      B        B      Y     2     0.000  0.997  256  
+Mercury_402216       B        B      Y     0     0.000  1.000  256  
+Mercury_404894       A        A      Y     2     0.000  0.997  256  
+MCAS_2002_8_11       C        C      Y     2     0.000  0.997  256  
+Mercury_SC_405086    B        B      Y     0     0.000  1.000  256  
+Mercury_SC_408324    D        D      Y     2     0.000  0.997  256  
+Mercury_7218820      D        B      N     2     0.000  0.997  256  
+Mercury_412202       D        B      N     2     0.000  0.997  256  
+Mercury_SC_409139    D        C      N     2     0.000  0.997  256  
+Mercury_400687       B        B      Y     2     0.000  0.997  256  
+Mercury_7171605      D        D      Y     2     0.000  0.997  256  
+Mercury_7210245      C        C      Y     2     0.000  0.997  256  
+AKDE&ED_2008_4_25    A        A      Y     2     0.000  0.997  256  
+AKDE&ED_2008_4_19    C        C      Y     2     0.000  0.997  256  
+Mercury_SC_400402    C        A      N     2     0.000  0.997  256  
+Mercury_7234308      A        A      Y     2     0.000  0.997  256  
+ACTAAP_2014_5_8      B        B      Y     2     0.000  0.997  256  
+Mercury_400407       B        B      Y     2     0.000  0.997  256  
+Mercury_7116288      C        C      Y     2     0.000  0.997  256  
+MCAS_2004_9_15-v1    B        B      Y     2     0.000  0.997  256  
+NYSEDREGENTS_2015_4_26 C        C      Y     2     0.000  0.997  256  
+Mercury_SC_401620    A        A      Y     2     0.000  0.997  256  
+Mercury_400877       C        C      Y     2     0.000  0.997  256  
+Mercury_7174213      D        D      Y     2     0.000  0.997  256  
+NYSEDREGENTS_2008_8_34 B        B      Y     2     0.000  0.997  256  
+Mercury_7212398      B        B      Y     2     0.000  0.997  256  
+Mercury_SC_401290    C        C      Y     2     0.000  0.997  256  
+Mercury_SC_402120    C        C      Y     2     0.000  0.997  256  
+Mercury_184975       C        C      Y     2     0.000  0.997  256  
+Mercury_SC_400578    B        A      N     2     0.000  0.997  256  
+MCAS_2001_8_4        D        D      Y     2     0.000  0.997  256  
+MCAS_2003_5_33       C        C      Y     2     0.000  0.997  256  
+Mercury_7068513      A        A      Y     2     0.000  0.997  256  
+AKDE&ED_2008_4_26    B        C      N     2     0.000  0.997  256  
+Mercury_7235638      C        C      Y     2     0.000  0.997  256  
+MDSA_2009_5_20       B        B      Y     165   0.008  0.652  256  
+Mercury_178325       D        C      N     2     0.000  0.997  256  
+Mercury_7212678      A        A      Y     2     0.000  0.997  256  
+TAKS_2009_8_32       A        A      Y     2     0.000  0.997  256  
+Mercury_412681       C        C      Y     2     0.000  0.997  256  
+Mercury_400440       D        D      Y     2     0.000  0.997  256  
+Mercury_SC_416529    B        B      Y     2     0.000  0.997  256  
+MCAS_2006_8_1        D        D      Y     2     0.000  0.997  256  
+TIMSS_2003_8_pg80    C        C      Y     2     0.000  0.997  256
+```
+
+### Pasted aggregate JSON (`results/llada_instruct_arcc_smoke64_direct_results.json`)
+
+```json
+{
+  "n_trajectories": 64,
+  "n_scored_for_accuracy": 64,
+  "accuracy": 0.875,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.875,
+  "mean_flip_rate": 0.0001,
+  "mean_rationalization_score": 0.9917,
+  "mean_gated_rationalization_score": 0.9818,
+  "mean_early_factor": 0.9826,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 0.9929,
+  "early_convergence_fraction": 0.9844,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.125,
+  "mean_convergence_step": 4.4531,
+  "median_convergence_step": 2.0,
+  "mean_convergence_fraction": 0.0174,
+  "median_convergence_fraction": 0.0078,
+  "mean_answer_commitment_step": 144.6719,
+  "mean_stability_commitment_lag": 140.2188,
+  "mean_unwritten_reasoning_at_convergence": 0.7884,
+  "mean_order_gap": 0.2322
+}
+```
