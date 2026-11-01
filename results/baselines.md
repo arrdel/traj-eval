@@ -361,3 +361,83 @@ MCAS_2006_9_44       C        D      N     189   0.000  0.206  256
 | `length_growth` | 0.0035 | 0.0203 | +0.0168 |
 | `score` | 0.3948 | 0.1703 | -0.2245 |
 | `gated_score` | 0.0012 | 0.0125 | +0.0113 |
+
+## Dream-v0-Instruct-7B — GSM8K 5-item numeric smoke (smoke clean (4/5 decided))
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `dream_gsm8k_smoke5`
+- **Git revision (`git rev-parse HEAD` at run):** `649a1f344398ff19fe28a1fab7e75c7569051c4b`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `0` (`CUDA_VISIBLE_DEVICES=0`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=dream, temperature=0.2, top_p=0.95, alg=entropy, alg_temp=0.0, steps=256, max_new_tokens=256, force_deliberation_steps=0, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/dream_gsm8k_smoke5_input.json`
+  - Fixed IDs: `results/dream_gsm8k_smoke5_ids.json`
+  - Trajectories: `results/dream_gsm8k_smoke5.jsonl`
+  - Run log: `results/dream_gsm8k_smoke5_run_log.json`
+  - Scored output: `results/dream_gsm8k_smoke5_results.json`
+- **Undecided count:** **1 undecided** (4 / 5 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            5
+Accuracy (final):        0.6000
+Mean flip rate:          0.0106
+Mean rationalization:    0.1809
+  [components] early=0.4523 post_change=0.0000 len_growth=0.0000 gated=0.0000
+Early convergence frac:  0.0000
+Mean convergence step:   111.25
+Median convergence step: 117.00
+Mean convergence frac:   0.4346
+Mean T_commit step:      111.25
+Mean lag (T_comm-T_stab):0.00
+Mean unwritten @ T_stab: 0.0000
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+gsm8k_test_0         None     18                 0.000  0.000  256  
+gsm8k_test_1         3        3      Y     126   0.000  0.203  256  
+gsm8k_test_2         65000    70000  N     142   0.034  0.178  256  
+gsm8k_test_3         540      540    Y     108   0.013  0.231  256  
+gsm8k_test_4         20       20     Y     69    0.005  0.292  256
+```
+
+### Pasted aggregate JSON (`results/dream_gsm8k_smoke5_results.json`)
+
+```json
+{
+  "n_trajectories": 5,
+  "n_scored_for_accuracy": 4,
+  "accuracy": 0.6,
+  "coverage": 0.8,
+  "conditional_accuracy": 0.75,
+  "mean_flip_rate": 0.0106,
+  "mean_rationalization_score": 0.1809,
+  "mean_gated_rationalization_score": 0.0,
+  "mean_early_factor": 0.4523,
+  "mean_post_change_rate": 0.0,
+  "mean_length_growth": 0.0,
+  "early_convergence_fraction": 0.0,
+  "disagreement_rate": 0.0,
+  "sbw_lockin_rate": 0.0,
+  "mean_convergence_step": 111.25,
+  "median_convergence_step": 117.0,
+  "mean_convergence_fraction": 0.4346,
+  "median_convergence_fraction": 0.457,
+  "mean_answer_commitment_step": 111.25,
+  "mean_stability_commitment_lag": 0.0,
+  "mean_unwritten_reasoning_at_convergence": 0.0,
+  "mean_order_gap": 0.2158
+}
+```
