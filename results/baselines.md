@@ -441,3 +441,93 @@ gsm8k_test_4         20       20     Y     69    0.005  0.292  256
   "mean_order_gap": 0.2158
 }
 ```
+
+## Dream-v0-Instruct-7B — ARC-C 5-item EOS-suppression K=64 smoke (smoke clean (5/5 decided))
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `dream_arcc_eos_suppression_k64_smoke5`
+- **Git revision (`git rev-parse HEAD` at run):** `2278ff57e798f54820822d519d63f320e07828a3`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `0` (`CUDA_VISIBLE_DEVICES=0`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=dream, temperature=0.2, top_p=0.95, alg=entropy, alg_temp=0.0, steps=256, max_new_tokens=256, force_deliberation_steps=64, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/dream_arcc_smoke5_input.json`
+  - Fixed IDs: `results/dream_arcc_smoke5_ids.json`
+  - Trajectories: `results/dream_arcc_eos_suppression_k64_smoke5.jsonl`
+  - Run log: `results/dream_arcc_eos_suppression_k64_smoke5_run_log.json`
+  - Scored output: `results/dream_arcc_eos_suppression_k64_smoke5_results.json`
+- **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            5
+Accuracy (final):        0.8000
+Mean flip rate:          0.0008
+Mean rationalization:    0.7962
+  [components] early=0.9617 post_change=0.5287 len_growth=1.0000 gated=0.6647
+Early convergence frac:  1.0000
+Mean convergence step:   9.80
+Median convergence step: 3.00
+Mean convergence frac:   0.0383
+Mean T_commit step:      70.00
+Mean lag (T_comm-T_stab):60.20
+Mean unwritten @ T_stab: 0.4733
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      C        C      Y     3     0.000  0.994  256  
+Mercury_SC_409171    B        B      Y     3     0.000  0.862  256  
+Mercury_SC_408547    C        C      Y     3     0.000  0.700  256  
+Mercury_407327       D        D      Y     3     0.000  0.787  256  
+MCAS_2006_9_44       B        D      N     37    0.004  0.638  256
+```
+
+### Pasted aggregate JSON (`results/dream_arcc_eos_suppression_k64_smoke5_results.json`)
+
+```json
+{
+  "n_trajectories": 5,
+  "n_scored_for_accuracy": 5,
+  "accuracy": 0.8,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.8,
+  "mean_flip_rate": 0.0008,
+  "mean_rationalization_score": 0.7962,
+  "mean_gated_rationalization_score": 0.6647,
+  "mean_early_factor": 0.9617,
+  "mean_post_change_rate": 0.5287,
+  "mean_length_growth": 1.0,
+  "early_convergence_fraction": 1.0,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.2,
+  "mean_convergence_step": 9.8,
+  "median_convergence_step": 3.0,
+  "mean_convergence_fraction": 0.0383,
+  "median_convergence_fraction": 0.0117,
+  "mean_answer_commitment_step": 70.0,
+  "mean_stability_commitment_lag": 60.2,
+  "mean_unwritten_reasoning_at_convergence": 0.4733,
+  "mean_order_gap": 0.1359
+}
+```
+
+### Side-by-side rationalization components (`unrestricted` vs `eos_suppression_k64`)
+
+| Component | `unrestricted` | `eos_suppression_k64` | Delta (`eos_suppression_k64 - unrestricted`) |
+|---|---:|---:|---:|
+| `early_factor` | 0.9875 | 0.9617 | -0.0258 |
+| `post_change_rate` | 0.0000 | 0.5287 | +0.5287 |
+| `length_growth` | 0.0000 | 1.0000 | +1.0000 |
+| `score` | 0.3950 | 0.7962 | +0.4012 |
+| `gated_score` | 0.0000 | 0.6647 | +0.6647 |
