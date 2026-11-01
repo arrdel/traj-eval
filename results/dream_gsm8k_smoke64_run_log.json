@@ -1,0 +1,735 @@
+{
+  "config": {
+    "model_id": "Dream-org/Dream-v0-Instruct-7B",
+    "task": "gsm8k",
+    "max_new_tokens": 256,
+    "steps": 256,
+    "temperature": 0.2,
+    "top_p": 0.95,
+    "alg": "entropy",
+    "alg_temp": 0.0,
+    "force_deliberation_steps": 0,
+    "frontier_width": null,
+    "n_items": 64,
+    "out_jsonl": "results/dream_gsm8k_smoke64.jsonl",
+    "out_ids": "results/smoke64_ids.json",
+    "out_log": "results/dream_gsm8k_smoke64_run_log.json",
+    "extra": {}
+  },
+  "git_revision": "2278ff57e798f54820822d519d63f320e07828a3",
+  "env": {
+    "cuda_visible_devices": "0",
+    "device": "cuda:0",
+    "gpu_name": "NVIDIA GeForce RTX 4090"
+  },
+  "n_trajectories": 64,
+  "ids": [
+    "gsm8k_test_0",
+    "gsm8k_test_1",
+    "gsm8k_test_2",
+    "gsm8k_test_3",
+    "gsm8k_test_4",
+    "gsm8k_test_5",
+    "gsm8k_test_6",
+    "gsm8k_test_7",
+    "gsm8k_test_8",
+    "gsm8k_test_9",
+    "gsm8k_test_10",
+    "gsm8k_test_11",
+    "gsm8k_test_12",
+    "gsm8k_test_13",
+    "gsm8k_test_14",
+    "gsm8k_test_15",
+    "gsm8k_test_16",
+    "gsm8k_test_17",
+    "gsm8k_test_18",
+    "gsm8k_test_19",
+    "gsm8k_test_20",
+    "gsm8k_test_21",
+    "gsm8k_test_22",
+    "gsm8k_test_23",
+    "gsm8k_test_24",
+    "gsm8k_test_25",
+    "gsm8k_test_26",
+    "gsm8k_test_27",
+    "gsm8k_test_28",
+    "gsm8k_test_29",
+    "gsm8k_test_30",
+    "gsm8k_test_31",
+    "gsm8k_test_32",
+    "gsm8k_test_33",
+    "gsm8k_test_34",
+    "gsm8k_test_35",
+    "gsm8k_test_36",
+    "gsm8k_test_37",
+    "gsm8k_test_38",
+    "gsm8k_test_39",
+    "gsm8k_test_40",
+    "gsm8k_test_41",
+    "gsm8k_test_42",
+    "gsm8k_test_43",
+    "gsm8k_test_44",
+    "gsm8k_test_45",
+    "gsm8k_test_46",
+    "gsm8k_test_47",
+    "gsm8k_test_48",
+    "gsm8k_test_49",
+    "gsm8k_test_50",
+    "gsm8k_test_51",
+    "gsm8k_test_52",
+    "gsm8k_test_53",
+    "gsm8k_test_54",
+    "gsm8k_test_55",
+    "gsm8k_test_56",
+    "gsm8k_test_57",
+    "gsm8k_test_58",
+    "gsm8k_test_59",
+    "gsm8k_test_60",
+    "gsm8k_test_61",
+    "gsm8k_test_62",
+    "gsm8k_test_63"
+  ],
+  "sanity": [
+    {
+      "id": "gsm8k_test_0",
+      "final_verdict": null,
+      "sequences_verdict": null,
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_0",
+      "last_step_non_null": false
+    },
+    {
+      "id": "gsm8k_test_1",
+      "final_verdict": "3",
+      "sequences_verdict": "3",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_1",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_2",
+      "final_verdict": "65000",
+      "sequences_verdict": "65000",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_2",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_3",
+      "final_verdict": "540",
+      "sequences_verdict": "540",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_3",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_4",
+      "final_verdict": "20",
+      "sequences_verdict": "20",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_4",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_5",
+      "final_verdict": "64",
+      "sequences_verdict": "64",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_5",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_6",
+      "final_verdict": "260",
+      "sequences_verdict": "260",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_6",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_7",
+      "final_verdict": "120",
+      "sequences_verdict": "120",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_7",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_8",
+      "final_verdict": "135",
+      "sequences_verdict": "135",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_8",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_9",
+      "final_verdict": "460",
+      "sequences_verdict": "460",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_9",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_10",
+      "final_verdict": "366",
+      "sequences_verdict": "366",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_10",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_11",
+      "final_verdict": "694",
+      "sequences_verdict": "694",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_11",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_12",
+      "final_verdict": "12",
+      "sequences_verdict": "12",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_12",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_13",
+      "final_verdict": "27",
+      "sequences_verdict": "27",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_13",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_14",
+      "final_verdict": "60",
+      "sequences_verdict": "60",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_14",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_15",
+      "final_verdict": "125",
+      "sequences_verdict": "125",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_15",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_16",
+      "final_verdict": "230",
+      "sequences_verdict": "230",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_16",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_17",
+      "final_verdict": "57500",
+      "sequences_verdict": "57500",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_17",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_18",
+      "final_verdict": "7",
+      "sequences_verdict": "7",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_18",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_19",
+      "final_verdict": "3",
+      "sequences_verdict": "3",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_19",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_20",
+      "final_verdict": "14",
+      "sequences_verdict": "14",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_20",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_21",
+      "final_verdict": "2",
+      "sequences_verdict": "2",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_21",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_22",
+      "final_verdict": "7",
+      "sequences_verdict": "7",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_22",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_23",
+      "final_verdict": "8",
+      "sequences_verdict": "8",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_23",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_24",
+      "final_verdict": "26",
+      "sequences_verdict": "26",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_24",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_25",
+      "final_verdict": "2",
+      "sequences_verdict": "2",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_25",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_26",
+      "final_verdict": "243",
+      "sequences_verdict": "243",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_26",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_27",
+      "final_verdict": "16",
+      "sequences_verdict": "16",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_27",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_28",
+      "final_verdict": "15",
+      "sequences_verdict": "15",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_28",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_29",
+      "final_verdict": "104",
+      "sequences_verdict": "104",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_29",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_30",
+      "final_verdict": "109",
+      "sequences_verdict": "109",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_30",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_31",
+      "final_verdict": "80",
+      "sequences_verdict": "80",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_31",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_32",
+      "final_verdict": "35",
+      "sequences_verdict": "35",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_32",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_33",
+      "final_verdict": "70",
+      "sequences_verdict": "70",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_33",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_34",
+      "final_verdict": "23",
+      "sequences_verdict": "23",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_34",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_35",
+      "final_verdict": "9",
+      "sequences_verdict": "9",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_35",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_36",
+      "final_verdict": "75",
+      "sequences_verdict": "75",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_36",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_37",
+      "final_verdict": "13",
+      "sequences_verdict": "13",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_37",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_38",
+      "final_verdict": "10",
+      "sequences_verdict": "10",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_38",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_39",
+      "final_verdict": "18",
+      "sequences_verdict": "18",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_39",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_40",
+      "final_verdict": "8",
+      "sequences_verdict": "8",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_40",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_41",
+      "final_verdict": "200",
+      "sequences_verdict": "200",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_41",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_42",
+      "final_verdict": "26",
+      "sequences_verdict": "26",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_42",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_43",
+      "final_verdict": "48",
+      "sequences_verdict": "48",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_43",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_44",
+      "final_verdict": "20",
+      "sequences_verdict": "20",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_44",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_45",
+      "final_verdict": "104",
+      "sequences_verdict": "104",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_45",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_46",
+      "final_verdict": "277",
+      "sequences_verdict": "277",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_46",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_47",
+      "final_verdict": "800",
+      "sequences_verdict": "800",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_47",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_48",
+      "final_verdict": "8",
+      "sequences_verdict": "8",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_48",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_49",
+      "final_verdict": "30",
+      "sequences_verdict": "30",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_49",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_50",
+      "final_verdict": "294",
+      "sequences_verdict": "294",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_50",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_51",
+      "final_verdict": "5",
+      "sequences_verdict": "5",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_51",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_52",
+      "final_verdict": "15",
+      "sequences_verdict": "15",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_52",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_53",
+      "final_verdict": "40",
+      "sequences_verdict": "40",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_53",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_54",
+      "final_verdict": "40",
+      "sequences_verdict": "40",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_54",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_55",
+      "final_verdict": "14",
+      "sequences_verdict": "14",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_55",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_56",
+      "final_verdict": "3",
+      "sequences_verdict": "3",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_56",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_57",
+      "final_verdict": "83",
+      "sequences_verdict": "83",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_57",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_58",
+      "final_verdict": "47",
+      "sequences_verdict": "47",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_58",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_59",
+      "final_verdict": "187",
+      "sequences_verdict": "187",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_59",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_60",
+      "final_verdict": "17",
+      "sequences_verdict": "17",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_60",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_61",
+      "final_verdict": "1430",
+      "sequences_verdict": "1430",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_61",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_62",
+      "final_verdict": "3750",
+      "sequences_verdict": "3750",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_62",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_63",
+      "final_verdict": null,
+      "sequences_verdict": null,
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_63",
+      "last_step_non_null": false
+    }
+  ],
+  "null_rule": "None = no verdict yet, not a distinct answer. Flip counted only between two non-null differing verdicts. Convergence over non-null sequence, mapped to original index."
+}
