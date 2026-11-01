@@ -25,9 +25,9 @@ Chosen 17 Oct 2026. Text trio first, because Yeom et al. (arXiv:2608.05687) alre
 
 | Checkpoint | Hugging Face id | Status |
 |---|---|---|
-| LLaDA-8B-Instruct | `GSAI-ML/LLaDA-8B-Instruct` | Adapter ready (`src/traj_eval/adapters/llada.py`). GPU run pending. |
-| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | Adapter ready (`src/traj_eval/adapters/llada.py`). GPU run pending. |
-| Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct & reasoning smokes clean + 64-item paired direct & canonical reasoning suites completed (2026-10-30). |
+| LLaDA-8B-Instruct | `GSAI-ML/LLaDA-8B-Instruct` | 5-item ARC-C direct & reasoning validation smokes clean + 64-item ARC-C direct suite completed (2026-11-01). 64-item reasoning & GSM8K suites pending next PRs. |
+| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | 5-item ARC-C direct & reasoning validation smokes clean + 64-item ARC-C direct suite completed (2026-11-01). 64-item reasoning & GSM8K suites pending next PRs. |
+| Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct, reasoning, EOS-suppression K=64, & GSM8K smokes clean + 64-item paired direct & canonical reasoning suites completed (2026-10-30 / 2026-11-01). |
 | MMaDA-8B-MixCoT (holdout) | `Gen-Verse/MMaDA-8B-MixCoT` | Not in the first suite. |
 
 Historical note (17 Oct 2026): no checkpoints were run on initial commit because all eight RTX A6000s were occupied (~43 GB of 49 GB, 100% utilization) and the base environment PyTorch (`2.11.0+cu130`) could not see the CUDA 12.1 driver. Subsequent runs below use a pinned `transformers==4.46.2` CUDA environment (`cdr-gpu` on `titan3` and `.venv-gpu` on `ai-lab2`) with one dedicated GPU per run and full run logs.
@@ -532,20 +532,366 @@ MCAS_2006_9_44       B        D      N     37    0.004  0.638  256
 | `score` | 0.3950 | 0.7962 | +0.4012 |
 | `gated_score` | 0.0000 | 0.6647 | +0.6647 |
 
-## LLaDA-8B-Instruct — ARC-C 64-item direct-answer suite (smoke clean (64/64 decided))
+## LLaDA-8B-Instruct — ARC-C 5-item direct-answer smoke (smoke clean (5/5 decided))
 
 - **Date (UTC):** 2026-11-01
-- **Job ID:** `llada_instruct_arcc_smoke64_direct`
-- **Git revision (`git rev-parse HEAD` at run):** `a76e1e9b653338cf16b48418d836411ea7a7dcdd`
+- **Job ID:** `llada_instruct_arcc_smoke5_direct`
+- **Git revision (`git rev-parse HEAD` at run):** `91647a5aa4c8f10a7ef7ba52915730c028fc72bd`
 - **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
 - **GPU:** index `1` (`CUDA_VISIBLE_DEVICES=1`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
 - **`nvidia-smi` at launch:**
   ```
   index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
-  0, NVIDIA GeForce RTX 4090, 16944 MiB, 24564 MiB, 98 %
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
   1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
-  2, NVIDIA GeForce RTX 4090, 1380 MiB, 24564 MiB, 0 %
-  3, NVIDIA GeForce RTX 4090, 18532 MiB, 24564 MiB, 99 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-instruct, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/dream_arcc_smoke5_input.json`
+  - Fixed IDs: `results/llada_instruct_arcc_smoke5_direct_ids.json`
+  - Trajectories: `results/llada_instruct_arcc_smoke5_direct.jsonl`
+  - Run log: `results/llada_instruct_arcc_smoke5_direct_run_log.json`
+  - Scored output: `results/llada_instruct_arcc_smoke5_direct_results.json`
+- **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            5
+Accuracy (final):        1.0000
+Mean flip rate:          0.0000
+Mean rationalization:    0.9969
+  [components] early=0.9922 post_change=1.0000 len_growth=1.0000 gated=0.9922
+Early convergence frac:  1.0000
+Mean convergence step:   2.00
+Median convergence step: 2.00
+Mean convergence frac:   0.0078
+Mean T_commit step:      2.00
+Mean lag (T_comm-T_stab):0.00
+Mean unwritten @ T_stab: 1.0000
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      C        C      Y     2     0.000  0.997  256  
+Mercury_SC_409171    B        B      Y     2     0.000  0.997  256  
+Mercury_SC_408547    C        C      Y     2     0.000  0.997  256  
+Mercury_407327       D        D      Y     2     0.000  0.997  256  
+MCAS_2006_9_44       D        D      Y     2     0.000  0.997  256
+```
+
+### Pasted aggregate JSON (`results/llada_instruct_arcc_smoke5_direct_results.json`)
+
+```json
+{
+  "n_trajectories": 5,
+  "n_scored_for_accuracy": 5,
+  "accuracy": 1.0,
+  "coverage": 1.0,
+  "conditional_accuracy": 1.0,
+  "mean_flip_rate": 0.0,
+  "mean_rationalization_score": 0.9969,
+  "mean_gated_rationalization_score": 0.9922,
+  "mean_early_factor": 0.9922,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 1.0,
+  "early_convergence_fraction": 1.0,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.0,
+  "mean_convergence_step": 2.0,
+  "median_convergence_step": 2.0,
+  "mean_convergence_fraction": 0.0078,
+  "median_convergence_fraction": 0.0078,
+  "mean_answer_commitment_step": 2.0,
+  "mean_stability_commitment_lag": 0.0,
+  "mean_unwritten_reasoning_at_convergence": 1.0,
+  "mean_order_gap": -0.4961
+}
+```
+
+
+## LLaDA-8B-Instruct — ARC-C 5-item reasoning-condition smoke (reasoning smoke clean)
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `llada_instruct_arcc_smoke5_reasoning`
+- **Git revision (`git rev-parse HEAD` at run):** `91647a5aa4c8f10a7ef7ba52915730c028fc72bd`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `1` (`CUDA_VISIBLE_DEVICES=1`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-instruct, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/dream_arcc_smoke5_reasoning_input.json`
+  - Fixed IDs: `results/llada_instruct_arcc_smoke5_reasoning_ids.json`
+  - Trajectories: `results/llada_instruct_arcc_smoke5_reasoning.jsonl`
+  - Run log: `results/llada_instruct_arcc_smoke5_reasoning_run_log.json`
+  - Scored output: `results/llada_instruct_arcc_smoke5_reasoning_results.json`
+- **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
+- **Reasoning smoke gate (`CURSOR_FOLLOWUP_2026-10-30` §5):** `reasoning smoke clean` (commitment clocks on `5/5`, post-verdict change on `5`, pre-verdict rationale on `3`).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            5
+Accuracy (final):        1.0000
+Mean flip rate:          0.0000
+Mean rationalization:    0.9691
+  [components] early=0.9227 post_change=1.0000 len_growth=1.0000 gated=0.9227
+Early convergence frac:  1.0000
+Mean convergence step:   19.80
+Median convergence step: 16.00
+Mean convergence frac:   0.0773
+Mean T_commit step:      19.80
+Mean lag (T_comm-T_stab):0.00
+Mean unwritten @ T_stab: 0.9217
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      C        C      Y     2     0.000  0.997  256  
+Mercury_SC_409171    B        B      Y     41    0.000  0.936  256  
+Mercury_SC_408547    C        C      Y     36    0.000  0.944  256  
+Mercury_407327       D        D      Y     4     0.000  0.994  256  
+MCAS_2006_9_44       D        D      Y     16    0.000  0.975  256
+```
+
+### Pasted aggregate JSON (`results/llada_instruct_arcc_smoke5_reasoning_results.json`)
+
+```json
+{
+  "n_trajectories": 5,
+  "n_scored_for_accuracy": 5,
+  "accuracy": 1.0,
+  "coverage": 1.0,
+  "conditional_accuracy": 1.0,
+  "mean_flip_rate": 0.0,
+  "mean_rationalization_score": 0.9691,
+  "mean_gated_rationalization_score": 0.9227,
+  "mean_early_factor": 0.9227,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 1.0,
+  "early_convergence_fraction": 1.0,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.0,
+  "mean_convergence_step": 19.8,
+  "median_convergence_step": 16.0,
+  "mean_convergence_fraction": 0.0773,
+  "median_convergence_fraction": 0.0625,
+  "mean_answer_commitment_step": 19.8,
+  "mean_stability_commitment_lag": 0.0,
+  "mean_unwritten_reasoning_at_convergence": 0.9217,
+  "mean_order_gap": -0.418
+}
+```
+
+### Side-by-side rationalization components (`direct` vs `reasoning`)
+
+| Component | `direct` | `reasoning` | Delta (`reasoning - direct`) |
+|---|---:|---:|---:|
+| `early_factor` | 0.9922 | 0.9227 | -0.0695 |
+| `post_change_rate` | 1.0000 | 1.0000 | +0.0000 |
+| `length_growth` | 1.0000 | 1.0000 | +0.0000 |
+| `score` | 0.9969 | 0.9691 | -0.0278 |
+| `gated_score` | 0.9922 | 0.9227 | -0.0695 |
+
+
+## LLaDA-1.5 — ARC-C 5-item direct-answer smoke (smoke clean (5/5 decided))
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `llada_15_arcc_smoke5_direct`
+- **Git revision (`git rev-parse HEAD` at run):** `91647a5aa4c8f10a7ef7ba52915730c028fc72bd`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `2` (`CUDA_VISIBLE_DEVICES=2`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-1.5, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/dream_arcc_smoke5_input.json`
+  - Fixed IDs: `results/llada_15_arcc_smoke5_direct_ids.json`
+  - Trajectories: `results/llada_15_arcc_smoke5_direct.jsonl`
+  - Run log: `results/llada_15_arcc_smoke5_direct_run_log.json`
+  - Scored output: `results/llada_15_arcc_smoke5_direct_results.json`
+- **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            5
+Accuracy (final):        1.0000
+Mean flip rate:          0.0000
+Mean rationalization:    0.9969
+  [components] early=0.9922 post_change=1.0000 len_growth=1.0000 gated=0.9922
+Early convergence frac:  1.0000
+Mean convergence step:   2.00
+Median convergence step: 2.00
+Mean convergence frac:   0.0078
+Mean T_commit step:      2.00
+Mean lag (T_comm-T_stab):0.00
+Mean unwritten @ T_stab: 1.0000
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      C        C      Y     2     0.000  0.997  256  
+Mercury_SC_409171    B        B      Y     2     0.000  0.997  256  
+Mercury_SC_408547    C        C      Y     2     0.000  0.997  256  
+Mercury_407327       D        D      Y     2     0.000  0.997  256  
+MCAS_2006_9_44       D        D      Y     2     0.000  0.997  256
+```
+
+### Pasted aggregate JSON (`results/llada_15_arcc_smoke5_direct_results.json`)
+
+```json
+{
+  "n_trajectories": 5,
+  "n_scored_for_accuracy": 5,
+  "accuracy": 1.0,
+  "coverage": 1.0,
+  "conditional_accuracy": 1.0,
+  "mean_flip_rate": 0.0,
+  "mean_rationalization_score": 0.9969,
+  "mean_gated_rationalization_score": 0.9922,
+  "mean_early_factor": 0.9922,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 1.0,
+  "early_convergence_fraction": 1.0,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.0,
+  "mean_convergence_step": 2.0,
+  "median_convergence_step": 2.0,
+  "mean_convergence_fraction": 0.0078,
+  "median_convergence_fraction": 0.0078,
+  "mean_answer_commitment_step": 2.0,
+  "mean_stability_commitment_lag": 0.0,
+  "mean_unwritten_reasoning_at_convergence": 1.0,
+  "mean_order_gap": -0.4969
+}
+```
+
+
+## LLaDA-1.5 — ARC-C 5-item reasoning-condition smoke (reasoning smoke clean)
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `llada_15_arcc_smoke5_reasoning`
+- **Git revision (`git rev-parse HEAD` at run):** `91647a5aa4c8f10a7ef7ba52915730c028fc72bd`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `2` (`CUDA_VISIBLE_DEVICES=2`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-1.5, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/dream_arcc_smoke5_reasoning_input.json`
+  - Fixed IDs: `results/llada_15_arcc_smoke5_reasoning_ids.json`
+  - Trajectories: `results/llada_15_arcc_smoke5_reasoning.jsonl`
+  - Run log: `results/llada_15_arcc_smoke5_reasoning_run_log.json`
+  - Scored output: `results/llada_15_arcc_smoke5_reasoning_results.json`
+- **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
+- **Reasoning smoke gate (`CURSOR_FOLLOWUP_2026-10-30` §5):** `reasoning smoke clean` (commitment clocks on `5/5`, post-verdict change on `5`, pre-verdict rationale on `3`).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            5
+Accuracy (final):        1.0000
+Mean flip rate:          0.0000
+Mean rationalization:    0.9785
+  [components] early=0.9461 post_change=1.0000 len_growth=1.0000 gated=0.9461
+Early convergence frac:  1.0000
+Mean convergence step:   13.80
+Median convergence step: 8.00
+Mean convergence frac:   0.0539
+Mean T_commit step:      13.80
+Mean lag (T_comm-T_stab):0.00
+Mean unwritten @ T_stab: 0.9455
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      C        C      Y     4     0.000  0.994  256  
+Mercury_SC_409171    B        B      Y     8     0.000  0.988  256  
+Mercury_SC_408547    C        C      Y     36    0.000  0.944  256  
+Mercury_407327       D        D      Y     4     0.000  0.994  256  
+MCAS_2006_9_44       D        D      Y     17    0.000  0.973  256
+```
+
+### Pasted aggregate JSON (`results/llada_15_arcc_smoke5_reasoning_results.json`)
+
+```json
+{
+  "n_trajectories": 5,
+  "n_scored_for_accuracy": 5,
+  "accuracy": 1.0,
+  "coverage": 1.0,
+  "conditional_accuracy": 1.0,
+  "mean_flip_rate": 0.0,
+  "mean_rationalization_score": 0.9785,
+  "mean_gated_rationalization_score": 0.9461,
+  "mean_early_factor": 0.9461,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 1.0,
+  "early_convergence_fraction": 1.0,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.0,
+  "mean_convergence_step": 13.8,
+  "median_convergence_step": 8.0,
+  "mean_convergence_fraction": 0.0539,
+  "median_convergence_fraction": 0.0312,
+  "mean_answer_commitment_step": 13.8,
+  "mean_stability_commitment_lag": 0.0,
+  "mean_unwritten_reasoning_at_convergence": 0.9455,
+  "mean_order_gap": -0.443
+}
+```
+
+### Side-by-side rationalization components (`direct` vs `reasoning`)
+
+| Component | `direct` | `reasoning` | Delta (`reasoning - direct`) |
+|---|---:|---:|---:|
+| `early_factor` | 0.9922 | 0.9461 | -0.0461 |
+| `post_change_rate` | 1.0000 | 1.0000 | +0.0000 |
+| `length_growth` | 1.0000 | 1.0000 | +0.0000 |
+| `score` | 0.9969 | 0.9785 | -0.0184 |
+| `gated_score` | 0.9922 | 0.9461 | -0.0461 |
+
+
+## LLaDA-8B-Instruct — ARC-C 64-item direct-answer suite (smoke clean (64/64 decided))
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `llada_instruct_arcc_smoke64_direct`
+- **Git revision (`git rev-parse HEAD` at run):** `91647a5aa4c8f10a7ef7ba52915730c028fc72bd`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `1` (`CUDA_VISIBLE_DEVICES=1`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
   ```
 - **Sampler & adapter config:** `model_family=llada-instruct, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
 - **Artifacts:**
@@ -569,9 +915,9 @@ Early convergence frac:  0.9844
 Mean convergence step:   4.45
 Median convergence step: 2.00
 Mean convergence frac:   0.0174
-Mean T_commit step:      144.67
-Mean lag (T_comm-T_stab):140.22
-Mean unwritten @ T_stab: 0.7884
+Mean T_commit step:      2.00
+Mean lag (T_comm-T_stab):-2.45
+Mean unwritten @ T_stab: 0.9899
 
 Per-trajectory:
 id                   final    gold   corr  conv  flip   rat    steps
@@ -664,9 +1010,149 @@ TIMSS_2003_8_pg80    C        C      Y     2     0.000  0.997  256
   "median_convergence_step": 2.0,
   "mean_convergence_fraction": 0.0174,
   "median_convergence_fraction": 0.0078,
-  "mean_answer_commitment_step": 144.6719,
-  "mean_stability_commitment_lag": 140.2188,
-  "mean_unwritten_reasoning_at_convergence": 0.7884,
-  "mean_order_gap": 0.2322
+  "mean_answer_commitment_step": 2.0,
+  "mean_stability_commitment_lag": -2.4531,
+  "mean_unwritten_reasoning_at_convergence": 0.9899,
+  "mean_order_gap": -0.4964
+}
+```
+
+
+## LLaDA-1.5 — ARC-C 64-item direct-answer suite (smoke clean (64/64 decided))
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `llada_15_arcc_smoke64_direct`
+- **Git revision (`git rev-parse HEAD` at run):** `91647a5aa4c8f10a7ef7ba52915730c028fc72bd`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `2` (`CUDA_VISIBLE_DEVICES=2`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-1.5, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/arcc_smoke64_direct_input.json`
+  - Fixed IDs: `results/arcc_smoke64_ids.json`
+  - Trajectories: `results/llada_15_arcc_smoke64_direct.jsonl`
+  - Run log: `results/llada_15_arcc_smoke64_direct_run_log.json`
+  - Scored output: `results/llada_15_arcc_smoke64_direct_results.json`
+- **Undecided count:** **0 undecided** (64 / 64 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            64
+Accuracy (final):        0.8750
+Mean flip rate:          0.0004
+Mean rationalization:    0.9856
+  [components] early=0.9711 post_change=1.0000 len_growth=0.9856 gated=0.9707
+Early convergence frac:  0.9688
+Mean convergence step:   7.41
+Median convergence step: 2.00
+Mean convergence frac:   0.0289
+Mean T_commit step:      2.00
+Mean lag (T_comm-T_stab):-5.41
+Mean unwritten @ T_stab: 0.9784
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      C        C      Y     2     0.000  0.997  256  
+Mercury_SC_409171    B        B      Y     2     0.000  0.997  256  
+Mercury_SC_408547    C        C      Y     2     0.000  0.997  256  
+Mercury_407327       D        D      Y     2     0.000  0.997  256  
+MCAS_2006_9_44       D        D      Y     2     0.000  0.997  256  
+Mercury_7270393      B        B      Y     2     0.000  0.997  256  
+MCAS_2014_5_7        C        C      Y     2     0.000  0.997  256  
+Mercury_7086660      C        C      Y     2     0.000  0.997  256  
+Mercury_7168805      B        B      Y     2     0.000  0.997  256  
+MCAS_2003_8_11       A        A      Y     2     0.000  0.997  256  
+Mercury_7250058      C        B      N     2     0.000  0.997  256  
+Mercury_7012740      A        A      Y     2     0.000  0.997  256  
+Mercury_LBS10610     C        C      Y     2     0.000  0.997  256  
+Mercury_SC_407400    C        C      Y     2     0.000  0.997  256  
+Mercury_7212993      C        C      Y     2     0.000  0.997  256  
+Mercury_SC_413240    A        A      Y     2     0.000  0.997  256  
+Mercury_7186358      C        C      Y     2     0.000  0.997  256  
+Mercury_7166425      B        B      Y     2     0.000  0.997  256  
+MDSA_2007_8_3        A        A      Y     2     0.000  0.997  256  
+Mercury_7094290      C        C      Y     2     0.000  0.997  256  
+Mercury_7186568      B        B      Y     2     0.000  0.997  256  
+Mercury_402216       B        B      Y     2     0.000  0.997  256  
+Mercury_404894       A        A      Y     2     0.000  0.997  256  
+MCAS_2002_8_11       C        C      Y     2     0.000  0.997  256  
+Mercury_SC_405086    B        B      Y     0     0.000  1.000  256  
+Mercury_SC_408324    D        D      Y     2     0.000  0.997  256  
+Mercury_7218820      D        B      N     2     0.000  0.997  256  
+Mercury_412202       D        B      N     2     0.000  0.997  256  
+Mercury_SC_409139    D        C      N     2     0.000  0.997  256  
+Mercury_400687       B        B      Y     2     0.000  0.997  256  
+Mercury_7171605      D        D      Y     2     0.000  0.997  256  
+Mercury_7210245      C        C      Y     2     0.000  0.997  256  
+AKDE&ED_2008_4_25    A        A      Y     2     0.000  0.997  256  
+AKDE&ED_2008_4_19    C        C      Y     17    0.008  0.973  256  
+Mercury_SC_400402    C        A      N     2     0.000  0.997  256  
+Mercury_7234308      A        A      Y     2     0.000  0.997  256  
+ACTAAP_2014_5_8      B        B      Y     2     0.000  0.997  256  
+Mercury_400407       B        B      Y     2     0.000  0.997  256  
+Mercury_7116288      C        C      Y     2     0.000  0.997  256  
+MCAS_2004_9_15-v1    B        B      Y     2     0.000  0.997  256  
+NYSEDREGENTS_2015_4_26 C        C      Y     2     0.000  0.997  256  
+Mercury_SC_401620    A        A      Y     2     0.000  0.997  256  
+Mercury_400877       C        C      Y     2     0.000  0.997  256  
+Mercury_7174213      D        D      Y     2     0.000  0.997  256  
+NYSEDREGENTS_2008_8_34 B        B      Y     236   0.008  0.447  256  
+Mercury_7212398      B        B      Y     2     0.000  0.997  256  
+Mercury_SC_401290    C        C      Y     2     0.000  0.997  256  
+Mercury_SC_402120    C        C      Y     2     0.000  0.997  256  
+Mercury_184975       C        C      Y     2     0.000  0.997  256  
+Mercury_SC_400578    B        A      N     2     0.000  0.997  256  
+MCAS_2001_8_4        D        D      Y     2     0.000  0.997  256  
+MCAS_2003_5_33       C        C      Y     2     0.000  0.997  256  
+Mercury_7068513      A        A      Y     2     0.000  0.997  256  
+AKDE&ED_2008_4_26    B        C      N     103   0.008  0.839  256  
+Mercury_7235638      C        C      Y     2     0.000  0.997  256  
+MDSA_2009_5_20       B        B      Y     0     0.000  1.000  256  
+Mercury_178325       D        C      N     2     0.000  0.997  256  
+Mercury_7212678      A        A      Y     2     0.000  0.997  256  
+TAKS_2009_8_32       A        A      Y     2     0.000  0.997  256  
+Mercury_412681       C        C      Y     2     0.000  0.997  256  
+Mercury_400440       D        D      Y     2     0.000  0.997  256  
+Mercury_SC_416529    B        B      Y     2     0.000  0.997  256  
+MCAS_2006_8_1        D        D      Y     2     0.000  0.997  256  
+TIMSS_2003_8_pg80    C        C      Y     2     0.000  0.997  256
+```
+
+### Pasted aggregate JSON (`results/llada_15_arcc_smoke64_direct_results.json`)
+
+```json
+{
+  "n_trajectories": 64,
+  "n_scored_for_accuracy": 64,
+  "accuracy": 0.875,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.875,
+  "mean_flip_rate": 0.0004,
+  "mean_rationalization_score": 0.9856,
+  "mean_gated_rationalization_score": 0.9707,
+  "mean_early_factor": 0.9711,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 0.9856,
+  "early_convergence_fraction": 0.9688,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.1094,
+  "mean_convergence_step": 7.4062,
+  "median_convergence_step": 2.0,
+  "mean_convergence_fraction": 0.0289,
+  "median_convergence_fraction": 0.0078,
+  "mean_answer_commitment_step": 2.0,
+  "mean_stability_commitment_lag": -5.4062,
+  "mean_unwritten_reasoning_at_convergence": 0.9784,
+  "mean_order_gap": -0.4965
 }
 ```
