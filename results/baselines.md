@@ -441,3 +441,83 @@ gsm8k_test_4         20       20     Y     69    0.005  0.292  256
   "mean_order_gap": 0.2158
 }
 ```
+
+## LLaDA-1.5 — ARC-C 5-item direct-answer smoke (smoke clean (5/5 decided))
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `llada_15_arcc_smoke5_direct`
+- **Git revision (`git rev-parse HEAD` at run):** `2278ff57e798f54820822d519d63f320e07828a3`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `2` (`CUDA_VISIBLE_DEVICES=2`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-1.5, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/dream_arcc_smoke5_input.json`
+  - Fixed IDs: `results/dream_arcc_smoke5_ids.json`
+  - Trajectories: `results/llada_15_arcc_smoke5_direct.jsonl`
+  - Run log: `results/llada_15_arcc_smoke5_direct_run_log.json`
+  - Scored output: `results/llada_15_arcc_smoke5_direct_results.json`
+- **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            5
+Accuracy (final):        1.0000
+Mean flip rate:          0.0000
+Mean rationalization:    0.9969
+  [components] early=0.9922 post_change=1.0000 len_growth=1.0000 gated=0.9922
+Early convergence frac:  1.0000
+Mean convergence step:   2.00
+Median convergence step: 2.00
+Mean convergence frac:   0.0078
+Mean T_commit step:      114.40
+Mean lag (T_comm-T_stab):112.40
+Mean unwritten @ T_stab: 0.7883
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      C        C      Y     2     0.000  0.997  256  
+Mercury_SC_409171    B        B      Y     2     0.000  0.997  256  
+Mercury_SC_408547    C        C      Y     2     0.000  0.997  256  
+Mercury_407327       D        D      Y     2     0.000  0.997  256  
+MCAS_2006_9_44       D        D      Y     2     0.000  0.997  256
+```
+
+### Pasted aggregate JSON (`results/llada_15_arcc_smoke5_direct_results.json`)
+
+```json
+{
+  "n_trajectories": 5,
+  "n_scored_for_accuracy": 5,
+  "accuracy": 1.0,
+  "coverage": 1.0,
+  "conditional_accuracy": 1.0,
+  "mean_flip_rate": 0.0,
+  "mean_rationalization_score": 0.9969,
+  "mean_gated_rationalization_score": 0.9922,
+  "mean_early_factor": 0.9922,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 1.0,
+  "early_convergence_fraction": 1.0,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.0,
+  "mean_convergence_step": 2.0,
+  "median_convergence_step": 2.0,
+  "mean_convergence_fraction": 0.0078,
+  "median_convergence_fraction": 0.0078,
+  "mean_answer_commitment_step": 114.4,
+  "mean_stability_commitment_lag": 112.4,
+  "mean_unwritten_reasoning_at_convergence": 0.7883,
+  "mean_order_gap": 0.1016
+}
+```
