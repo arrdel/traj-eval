@@ -531,3 +531,142 @@ MCAS_2006_9_44       B        D      N     37    0.004  0.638  256
 | `length_growth` | 0.0000 | 1.0000 | +1.0000 |
 | `score` | 0.3950 | 0.7962 | +0.4012 |
 | `gated_score` | 0.0000 | 0.6647 | +0.6647 |
+
+## LLaDA-8B-Instruct — GSM8K 64-item numeric suite (smoke clean (64/64 decided))
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `llada_instruct_gsm8k_smoke64`
+- **Git revision (`git rev-parse HEAD` at run):** `a76e1e9b653338cf16b48418d836411ea7a7dcdd`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `3` (`CUDA_VISIBLE_DEVICES=3`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 16944 MiB, 24564 MiB, 98 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 100 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-instruct, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/gsm8k_smoke64_input.json`
+  - Fixed IDs: `results/smoke64_ids.json`
+  - Trajectories: `results/llada_instruct_gsm8k_smoke64.jsonl`
+  - Run log: `results/llada_instruct_gsm8k_smoke64_run_log.json`
+  - Scored output: `results/llada_instruct_gsm8k_smoke64_results.json`
+- **Undecided count:** **0 undecided** (64 / 64 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            64
+Accuracy (final):        0.6562
+Mean flip rate:          0.0143
+Mean rationalization:    0.8473
+  [components] early=0.6940 post_change=1.0000 len_growth=0.8484 gated=0.6844
+Early convergence frac:  0.4844
+Mean convergence step:   78.34
+Median convergence step: 53.50
+Mean convergence frac:   0.3060
+Mean T_commit step:      220.62
+Mean lag (T_comm-T_stab):142.28
+Mean unwritten @ T_stab: 0.6892
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+gsm8k_test_0         18       18     Y     68    0.004  0.894  256  
+gsm8k_test_1         3        3      Y     159   0.000  0.663  256  
+gsm8k_test_2         125000   70000  N     89    0.013  0.861  256  
+gsm8k_test_3         540      540    Y     213   0.045  0.533  256  
+gsm8k_test_4         20       20     Y     13    0.004  0.980  256  
+gsm8k_test_5         64       64     Y     39    0.004  0.939  256  
+gsm8k_test_6         260      260    Y     231   0.077  0.460  256  
+gsm8k_test_7         100      160    N     43    0.008  0.933  256  
+gsm8k_test_8         370      45     N     79    0.008  0.877  256  
+gsm8k_test_9         460      460    Y     20    0.008  0.969  256  
+gsm8k_test_10        366      366    Y     139   0.017  0.703  256  
+gsm8k_test_11        694      694    Y     200   0.010  0.530  256  
+gsm8k_test_12        15       13     N     53    0.004  0.917  256  
+gsm8k_test_13        18       18     Y     84    0.005  0.869  256  
+gsm8k_test_14        60       60     Y     31    0.004  0.952  256  
+gsm8k_test_15        125      125    Y     15    0.008  0.977  256  
+gsm8k_test_16        230      230    Y     221   0.056  0.489  256  
+gsm8k_test_17        92500    57500  N     62    0.005  0.903  256  
+gsm8k_test_18        14       7      N     47    0.005  0.927  256  
+gsm8k_test_19        6        6      Y     11    0.000  0.983  256  
+gsm8k_test_20        18       15     N     72    0.004  0.887  256  
+gsm8k_test_21        10       14     N     232   0.036  0.460  256  
+gsm8k_test_22        7        7      Y     23    0.000  0.964  256  
+gsm8k_test_23        8        8      Y     39    0.000  0.939  256  
+gsm8k_test_24        26       26     Y     32    0.004  0.950  256  
+gsm8k_test_25        2        2      Y     15    0.000  0.977  256  
+gsm8k_test_26        242      243    N     211   0.043  0.510  256  
+gsm8k_test_27        16       16     Y     67    0.000  0.895  256  
+gsm8k_test_28        25       25     Y     31    0.004  0.952  256  
+gsm8k_test_29        104      104    Y     45    0.009  0.930  256  
+gsm8k_test_30        65       109    N     57    0.004  0.911  256  
+gsm8k_test_31        80       80     Y     69    0.004  0.892  256  
+gsm8k_test_32        35       35     Y     29    0.004  0.955  256  
+gsm8k_test_33        70       70     Y     21    0.004  0.967  256  
+gsm8k_test_34        23       23     Y     178   0.013  0.590  256  
+gsm8k_test_35        9        9      Y     130   0.000  0.797  256  
+gsm8k_test_36        75       75     Y     93    0.000  0.855  256  
+gsm8k_test_37        1        2      N     16    0.000  0.975  256  
+gsm8k_test_38        12       10     N     54    0.004  0.916  256  
+gsm8k_test_39        36       18     N     24    0.004  0.963  256  
+gsm8k_test_40        8        8      Y     17    0.000  0.973  256  
+gsm8k_test_41        200      200    Y     4     0.000  0.994  256  
+gsm8k_test_42        26       26     Y     35    0.000  0.945  256  
+gsm8k_test_43        200      48     N     76    0.010  0.881  256  
+gsm8k_test_44        20       20     Y     8     0.004  0.988  256  
+gsm8k_test_45        84       104    N     181   0.013  0.592  256  
+gsm8k_test_46        243      163    N     18    0.008  0.972  256  
+gsm8k_test_47        800      800    Y     31    0.004  0.952  256  
+gsm8k_test_48        8        8      Y     89    0.000  0.861  256  
+gsm8k_test_49        30       30     Y     83    0.005  0.870  256  
+gsm8k_test_50        392      294    N     108   0.011  0.831  256  
+gsm8k_test_51        5        5      Y     4     0.000  0.994  256  
+gsm8k_test_52        18       15     N     20    0.004  0.969  256  
+gsm8k_test_53        120      40     N     208   0.008  0.533  256  
+gsm8k_test_54        40       40     Y     51    0.005  0.920  256  
+gsm8k_test_55        14       14     Y     251   0.326  0.410  256  
+gsm8k_test_56        3        3      Y     25    0.000  0.961  256  
+gsm8k_test_57        153      83     N     72    0.011  0.887  256  
+gsm8k_test_58        57       57     Y     64    0.004  0.900  256  
+gsm8k_test_59        187      187    Y     212   0.053  0.504  256  
+gsm8k_test_60        17       17     Y     49    0.004  0.923  256  
+gsm8k_test_61        1330     1430   N     9     0.004  0.986  256  
+gsm8k_test_62        25000    25000  Y     17    0.004  0.973  256  
+gsm8k_test_63        1680     1596   N     127   0.012  0.764  256
+```
+
+### Pasted aggregate JSON (`results/llada_instruct_gsm8k_smoke64_results.json`)
+
+```json
+{
+  "n_trajectories": 64,
+  "n_scored_for_accuracy": 64,
+  "accuracy": 0.6562,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.6562,
+  "mean_flip_rate": 0.0143,
+  "mean_rationalization_score": 0.8473,
+  "mean_gated_rationalization_score": 0.6844,
+  "mean_early_factor": 0.694,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 0.8484,
+  "early_convergence_fraction": 0.4844,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.1094,
+  "mean_convergence_step": 78.3438,
+  "median_convergence_step": 53.5,
+  "mean_convergence_fraction": 0.306,
+  "median_convergence_fraction": 0.209,
+  "mean_answer_commitment_step": 220.625,
+  "mean_stability_commitment_lag": 142.2812,
+  "mean_unwritten_reasoning_at_convergence": 0.6892,
+  "mean_order_gap": 0.3658
+}
+```
