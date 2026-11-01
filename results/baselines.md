@@ -441,3 +441,83 @@ gsm8k_test_4         20       20     Y     69    0.005  0.292  256
   "mean_order_gap": 0.2158
 }
 ```
+
+## LLaDA-8B-Instruct — GSM8K 5-item numeric smoke (smoke clean (5/5 decided))
+
+- **Date (UTC):** 2026-11-01
+- **Job ID:** `llada_instruct_gsm8k_smoke5`
+- **Git revision (`git rev-parse HEAD` at run):** `2278ff57e798f54820822d519d63f320e07828a3`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `3` (`CUDA_VISIBLE_DEVICES=3`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-instruct, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/dream_gsm8k_smoke5_input.json`
+  - Fixed IDs: `results/dream_gsm8k_smoke5_ids.json`
+  - Trajectories: `results/llada_instruct_gsm8k_smoke5.jsonl`
+  - Run log: `results/llada_instruct_gsm8k_smoke5_run_log.json`
+  - Scored output: `results/llada_instruct_gsm8k_smoke5_results.json`
+- **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            5
+Accuracy (final):        0.8000
+Mean flip rate:          0.0133
+Mean rationalization:    0.7861
+  [components] early=0.5766 post_change=1.0000 len_growth=0.7772 gated=0.5579
+Early convergence frac:  0.2000
+Mean convergence step:   108.40
+Median convergence step: 89.00
+Mean convergence frac:   0.4234
+Mean T_commit step:      254.00
+Mean lag (T_comm-T_stab):145.60
+Mean unwritten @ T_stab: 0.5700
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+gsm8k_test_0         18       18     Y     68    0.004  0.894  256  
+gsm8k_test_1         3        3      Y     159   0.000  0.663  256  
+gsm8k_test_2         125000   70000  N     89    0.013  0.861  256  
+gsm8k_test_3         540      540    Y     213   0.045  0.533  256  
+gsm8k_test_4         20       20     Y     13    0.004  0.980  256
+```
+
+### Pasted aggregate JSON (`results/llada_instruct_gsm8k_smoke5_results.json`)
+
+```json
+{
+  "n_trajectories": 5,
+  "n_scored_for_accuracy": 5,
+  "accuracy": 0.8,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.8,
+  "mean_flip_rate": 0.0133,
+  "mean_rationalization_score": 0.7861,
+  "mean_gated_rationalization_score": 0.5579,
+  "mean_early_factor": 0.5766,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 0.7772,
+  "early_convergence_fraction": 0.2,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.0,
+  "mean_convergence_step": 108.4,
+  "median_convergence_step": 89.0,
+  "mean_convergence_fraction": 0.4234,
+  "median_convergence_fraction": 0.3477,
+  "mean_answer_commitment_step": 254.0,
+  "mean_stability_commitment_lag": 145.6,
+  "mean_unwritten_reasoning_at_convergence": 0.57,
+  "mean_order_gap": 0.4969
+}
+```
