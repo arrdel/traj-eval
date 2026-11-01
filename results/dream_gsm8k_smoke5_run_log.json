@@ -1,0 +1,86 @@
+{
+  "config": {
+    "model_id": "Dream-org/Dream-v0-Instruct-7B",
+    "task": "gsm8k",
+    "max_new_tokens": 256,
+    "steps": 256,
+    "temperature": 0.2,
+    "top_p": 0.95,
+    "alg": "entropy",
+    "alg_temp": 0.0,
+    "force_deliberation_steps": 0,
+    "frontier_width": null,
+    "n_items": 5,
+    "out_jsonl": "results/dream_gsm8k_smoke5.jsonl",
+    "out_ids": "results/dream_gsm8k_smoke5_ids.json",
+    "out_log": "results/dream_gsm8k_smoke5_run_log.json",
+    "extra": {}
+  },
+  "git_revision": "649a1f344398ff19fe28a1fab7e75c7569051c4b",
+  "env": {
+    "cuda_visible_devices": "0",
+    "device": "cuda:0",
+    "gpu_name": "NVIDIA GeForce RTX 4090"
+  },
+  "n_trajectories": 5,
+  "ids": [
+    "gsm8k_test_0",
+    "gsm8k_test_1",
+    "gsm8k_test_2",
+    "gsm8k_test_3",
+    "gsm8k_test_4"
+  ],
+  "sanity": [
+    {
+      "id": "gsm8k_test_0",
+      "final_verdict": null,
+      "sequences_verdict": null,
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_0",
+      "last_step_non_null": false
+    },
+    {
+      "id": "gsm8k_test_1",
+      "final_verdict": "3",
+      "sequences_verdict": "3",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_1",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_2",
+      "final_verdict": "65000",
+      "sequences_verdict": "65000",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_2",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_3",
+      "final_verdict": "540",
+      "sequences_verdict": "540",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_3",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_4",
+      "final_verdict": "20",
+      "sequences_verdict": "20",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_4",
+      "last_step_non_null": true
+    }
+  ],
+  "null_rule": "None = no verdict yet, not a distinct answer. Flip counted only between two non-null differing verdicts. Convergence over non-null sequence, mapped to original index."
+}
