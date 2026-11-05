@@ -1,0 +1,148 @@
+{
+  "base_label": "direct_64",
+  "target_label": "reasoning_64",
+  "base_aggregate": {
+    "n_trajectories": 64,
+    "n_scored_for_accuracy": 64,
+    "accuracy": 0.875,
+    "coverage": 1.0,
+    "conditional_accuracy": 0.875,
+    "mean_flip_rate": 0.0001,
+    "mean_rationalization_score": 0.9917,
+    "mean_gated_rationalization_score": 0.9818,
+    "mean_early_factor": 0.9826,
+    "mean_post_change_rate": 1.0,
+    "mean_length_growth": 0.9929,
+    "early_convergence_fraction": 0.9844,
+    "disagreement_rate": 1.0,
+    "sbw_lockin_rate": 0.125,
+    "mean_convergence_step": 4.4531,
+    "median_convergence_step": 2.0,
+    "mean_convergence_fraction": 0.0174,
+    "median_convergence_fraction": 0.0078,
+    "mean_answer_commitment_step": 2.0,
+    "mean_stability_commitment_lag": -2.4531,
+    "mean_unwritten_reasoning_at_convergence": 0.9899,
+    "mean_order_gap": -0.4964
+  },
+  "target_aggregate": {
+    "n_trajectories": 64,
+    "n_scored_for_accuracy": 64,
+    "accuracy": 0.9062,
+    "coverage": 1.0,
+    "conditional_accuracy": 0.9062,
+    "mean_flip_rate": 0.0014,
+    "mean_rationalization_score": 0.9464,
+    "mean_gated_rationalization_score": 0.8732,
+    "mean_early_factor": 0.8746,
+    "mean_post_change_rate": 1.0,
+    "mean_length_growth": 0.9828,
+    "early_convergence_fraction": 0.8281,
+    "disagreement_rate": 1.0,
+    "sbw_lockin_rate": 0.0781,
+    "mean_convergence_step": 32.1094,
+    "median_convergence_step": 21.0,
+    "mean_convergence_fraction": 0.1254,
+    "median_convergence_fraction": 0.082,
+    "mean_answer_commitment_step": 32.3125,
+    "mean_stability_commitment_lag": 0.2031,
+    "mean_unwritten_reasoning_at_convergence": 0.8492,
+    "mean_order_gap": -0.3574
+  },
+  "rationalization_components_side_by_side": {
+    "early_factor": {
+      "direct_64": 0.9826,
+      "reasoning_64": 0.8746,
+      "delta": -0.108
+    },
+    "post_change_rate": {
+      "direct_64": 1.0,
+      "reasoning_64": 1.0,
+      "delta": 0.0
+    },
+    "length_growth": {
+      "direct_64": 0.9929,
+      "reasoning_64": 0.9828,
+      "delta": -0.0101
+    },
+    "score": {
+      "direct_64": 0.9917,
+      "reasoning_64": 0.9464,
+      "delta": -0.0453
+    },
+    "gated_score": {
+      "direct_64": 0.9818,
+      "reasoning_64": 0.8732,
+      "delta": -0.1086
+    }
+  },
+  "accuracy_delta": {
+    "base_accuracy": 0.875,
+    "target_accuracy": 0.9062,
+    "delta": 0.031200000000000006,
+    "relative_drop": -0.035657142857142866
+  },
+  "coverage_decomposition": {
+    "base_coverage": 1.0,
+    "target_coverage": 1.0,
+    "base_conditional_accuracy": 0.875,
+    "target_conditional_accuracy": 0.9062,
+    "base_accuracy": 0.875,
+    "target_accuracy": 0.9062,
+    "delta_accuracy": 0.0312,
+    "coverage_effect": 0.0,
+    "conditional_accuracy_effect": 0.0312
+  },
+  "paired_bootstrap": {
+    "accuracy": {
+      "metric": "accuracy",
+      "n_paired": 64,
+      "base_mean": 0.875,
+      "target_mean": 0.9062,
+      "delta": 0.0312,
+      "ci_low": -0.0312,
+      "ci_high": 0.0938,
+      "ci_level": 0.9
+    },
+    "flip_rate": {
+      "metric": "flip_rate",
+      "n_paired": 64,
+      "base_mean": 0.0001,
+      "target_mean": 0.0014,
+      "delta": 0.0013,
+      "ci_low": 0.0001,
+      "ci_high": 0.003,
+      "ci_level": 0.9
+    },
+    "rationalization_score": {
+      "metric": "rationalization_score",
+      "n_paired": 64,
+      "base_mean": 0.9917,
+      "target_mean": 0.9464,
+      "delta": -0.0453,
+      "ci_low": -0.0641,
+      "ci_high": -0.0286,
+      "ci_level": 0.9
+    },
+    "gated_rationalization_score": {
+      "metric": "gated_rationalization_score",
+      "n_paired": 64,
+      "base_mean": 0.9818,
+      "target_mean": 0.8732,
+      "delta": -0.1086,
+      "ci_low": -0.1474,
+      "ci_high": -0.0733,
+      "ci_level": 0.9
+    },
+    "convergence_fraction": {
+      "metric": "convergence_fraction",
+      "n_paired": 64,
+      "base_mean": 0.0174,
+      "target_mean": 0.1254,
+      "delta": 0.108,
+      "ci_low": 0.0748,
+      "ci_high": 0.1447,
+      "ci_level": 0.9
+    }
+  }
+}
