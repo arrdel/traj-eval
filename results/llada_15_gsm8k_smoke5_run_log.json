@@ -1,0 +1,86 @@
+{
+  "config": {
+    "model_id": "GSAI-ML/LLaDA-1.5",
+    "task": "gsm8k",
+    "gen_length": 256,
+    "steps": 256,
+    "block_length": 256,
+    "temperature": 0.0,
+    "cfg_scale": 0.0,
+    "remasking": "low_confidence",
+    "mask_id": 126336,
+    "logits_eos_inf": false,
+    "confidence_eos_eot_inf": true,
+    "frontier_width": null,
+    "n_items": 5,
+    "out_jsonl": "results/llada_15_gsm8k_smoke5.jsonl",
+    "out_ids": "results/llada_15_gsm8k_smoke5_ids.json",
+    "out_log": "results/llada_15_gsm8k_smoke5_run_log.json",
+    "extra": {}
+  },
+  "git_revision": "a76e1e9b653338cf16b48418d836411ea7a7dcdd",
+  "env": {
+    "cuda_visible_devices": "3",
+    "device": "cuda:0"
+  },
+  "n_trajectories": 5,
+  "ids": [
+    "gsm8k_test_0",
+    "gsm8k_test_1",
+    "gsm8k_test_2",
+    "gsm8k_test_3",
+    "gsm8k_test_4"
+  ],
+  "sanity": [
+    {
+      "id": "gsm8k_test_0",
+      "final_verdict": "18",
+      "sequences_verdict": "18",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_0",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_1",
+      "final_verdict": "3",
+      "sequences_verdict": "3",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_1",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_2",
+      "final_verdict": "105000",
+      "sequences_verdict": "105000",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_2",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_3",
+      "final_verdict": "540",
+      "sequences_verdict": "540",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_3",
+      "last_step_non_null": true
+    },
+    {
+      "id": "gsm8k_test_4",
+      "final_verdict": "20",
+      "sequences_verdict": "20",
+      "match": true
+    },
+    {
+      "id": "gsm8k_test_4",
+      "last_step_non_null": true
+    }
+  ]
+}

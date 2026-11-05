@@ -332,3 +332,56 @@ def test_commitment_answer_first_header_ignores_later_explanation_restatement():
     assert unwritten_reasoning_at_convergence(traj) == 1.0
     assert [s.committed_reasoning_fraction for s in traj.steps] == [0.0, 0.0, 0.5, 1.0]
     assert order_gap(traj) == -0.25
+
+
+def test_commitment_multi_token_numeric_answer_span():
+    # Multi-token GSM8K answer "125,000" tokenized across multiple digit tokens:
+    # 20="Profit is ", 30="#### ", 31="125", 32=",", 33="000", 40=" ####."
+    # At step 1: only "000" (tok 33) is unmasked -> prediction="0" ("000" -> "0").
+    # At step 2: "125" and "," (toks 31, 32) unmask -> prediction="125000" stabilizes and commits!
+    # At step 3: rationale token 20 and trailing punctuation 40 unmask.
+    from traj_eval.adapters.dream import extract_gsm8k_verdict
+    from traj_eval.metrics import (
+        answer_commitment_step,
+        stability_commitment_lag,
+        unwritten_reasoning_at_convergence,
+        verdict_convergence_step,
+    )
+
+    tok = FakeTokenizer(
+        {
+            10: "P",
+            20: "Profit is ",
+            30: "#### ",
+            31: "125",
+            32: ",",
+            33: "000",
+            40: " ####.",
+            999: "",
+        }
+    )
+    history = [
+        [10, 999, 999, 999, 999, 999, 999],
+        [10, 999, 30, 999, 999, 33, 999],
+        [10, 999, 30, 31, 32, 33, 999],
+        [10, 20, 30, 31, 32, 33, 40],
+    ]
+    traj = history_to_trajectory(
+        traj_id="gsm8k_test_2",
+        prompt="Q?",
+        gold_answer="125000",
+        history=history,
+        tokenizer=tok,
+        prompt_len=1,
+        mask_token_id=999,
+        verdict_fn=extract_gsm8k_verdict,
+    )
+    assert [s.prediction for s in traj.steps] == [None, "000", "125000", "125000"]
+    assert verdict_convergence_step(traj) == 2
+    # Multi-token span [pos 2 ("125"), pos 3 (","), pos 4 ("000")] completes at step 2
+    # (not step 1 when only "000" was unmasked, and not step 3 when trailing " ####." unmasked).
+    assert answer_commitment_step(traj) == 2
+    assert stability_commitment_lag(traj) == 0
+    # Rationale before ans_span_positions[0] (pos 2) is pos 0 (tok 20) and pos 1 (tok 30):
+    # at step 2, tok 30 is committed and tok 20 is masked -> 1/2 = 0.5 unwritten.
+    assert unwritten_reasoning_at_convergence(traj) == 0.5

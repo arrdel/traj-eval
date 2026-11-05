@@ -433,6 +433,7 @@ def compute_step_commitments(
 
     target = final_verdict.strip().upper()
     ans_pos: int | None = None
+    ans_span_positions: list[int] = []
     joined_text = "".join(pieces[j] for j in content_pos)
     char_span = _locate_verdict_char_span(joined_text, target)
     if char_span is not None:
@@ -447,9 +448,11 @@ def compute_step_commitments(
                 cleaned_piece = re.sub(r"[\s()\[\]{}:.,;\"'`$*]+", "", pieces[j]).upper()
                 if cleaned_piece == target or target in pieces[j].upper():
                     ans_pos = j
+                    ans_span_positions = [j]
                     break
             if ans_pos is None:
                 ans_pos = overlapping[-1]
+                ans_span_positions = overlapping
 
     # Fallback Pass 1: exact match after stripping whitespace and punctuation, scanning from end.
     if ans_pos is None and target:
@@ -457,19 +460,26 @@ def compute_step_commitments(
             cleaned_piece = re.sub(r"[\s()\[\]{}:.,;\"'`$*]+", "", pieces[j]).upper()
             if cleaned_piece == target:
                 ans_pos = j
+                ans_span_positions = [j]
                 break
     # Fallback Pass 2: substring match if no exact token match exists.
     if ans_pos is None and target:
         for j in reversed(content_pos):
             if target in pieces[j].upper():
                 ans_pos = j
+                ans_span_positions = [j]
                 break
     # Fallback Pass 3: last content token.
     if ans_pos is None:
         ans_pos = content_pos[-1]
+        ans_span_positions = [ans_pos]
 
-    before_pos = [j for j in content_pos if j < ans_pos]
-    after_pos = [j for j in content_pos if j > ans_pos]
+    first_ans_pos = ans_span_positions[0]
+    last_ans_pos = ans_span_positions[-1]
+    ans_commit_step = max(tau[j] for j in ans_span_positions)
+
+    before_pos = [j for j in content_pos if j < first_ans_pos]
+    after_pos = [j for j in content_pos if j > last_ans_pos]
     if len(before_pos) <= 4 and len(after_pos) > len(before_pos):
         # Answer-first format (e.g. "Answer: C\n\nWhen a planet rotates..."):
         # rationale tokens are the post-answer explanation positions.
@@ -479,7 +489,7 @@ def compute_step_commitments(
 
     out: list[tuple[bool, float]] = []
     for t in range(n_steps):
-        ans_comm = tau[ans_pos] <= t
+        ans_comm = ans_commit_step <= t
         if rationale_pos:
             crf = sum(1 for j in rationale_pos if tau[j] <= t) / len(rationale_pos)
         else:
