@@ -26,7 +26,7 @@ Chosen 17 Oct 2026. Text trio first, because Yeom et al. (arXiv:2608.05687) alre
 | Checkpoint | Hugging Face id | Status |
 |---|---|---|
 | LLaDA-8B-Instruct | `GSAI-ML/LLaDA-8B-Instruct` | All 5-item (ARC-C direct, ARC-C reasoning, GSM8K) and 64-item (ARC-C direct, ARC-C canonical reasoning, GSM8K) suites completed (2026-11-01). |
-| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | 5-item ARC-C (direct & reasoning) and GSM8K validation smokes clean + 64-item ARC-C paired (direct & canonical reasoning) suites completed (2026-11-01). 64-item GSM8K suite pending next PR. |
+| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | All 5-item (ARC-C direct, ARC-C reasoning, GSM8K) and 64-item (ARC-C direct, ARC-C canonical reasoning, GSM8K) suites completed (2026-11-01). |
 | Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct, reasoning, EOS-suppression K=64, & GSM8K smokes clean + 64-item ARC-C paired (direct & canonical reasoning) and 64-item GSM8K suites completed (2026-10-30 / 2026-11-01). |
 | MMaDA-8B-MixCoT (holdout) | `Gen-Verse/MMaDA-8B-MixCoT` | Not in the first suite. |
 
@@ -1897,3 +1897,142 @@ TIMSS_2003_8_pg80    C        C      Y     31    0.000  0.952  256
 | `length_growth` | 0.9856 | 0.9958 | +0.0102 |
 | `score` | 0.9856 | 0.9652 | -0.0204 |
 | `gated_score` | 0.9707 | 0.9146 | -0.0561 |
+
+## LLaDA-1.5 — GSM8K 64-item numeric suite (smoke clean (64/64 decided))
+
+- **Date (UTC):** 2026-11-07
+- **Job ID:** `llada_15_gsm8k_smoke64`
+- **Git revision (`git rev-parse HEAD` at run):** `0870b06e2d055dfde520c6e5a5be690535e52fab`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `1` (`CUDA_VISIBLE_DEVICES=1`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-1.5, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/gsm8k_smoke64_input.json`
+  - Fixed IDs: `results/smoke64_ids.json`
+  - Trajectories: `results/llada_15_gsm8k_smoke64.jsonl`
+  - Run log: `results/llada_15_gsm8k_smoke64_run_log.json`
+  - Scored output: `results/llada_15_gsm8k_smoke64_results.json`
+- **Undecided count:** **0 undecided** (64 / 64 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            64
+Accuracy (final):        0.6094
+Mean flip rate:          0.0071
+Mean rationalization:    0.8515
+  [components] early=0.7181 post_change=0.9844 len_growth=0.8527 gated=0.7071
+Early convergence frac:  0.5781
+Mean convergence step:   72.17
+Median convergence step: 47.00
+Mean convergence frac:   0.2819
+Mean T_commit step:      72.17
+Mean lag (T_comm-T_stab):0.00
+Mean unwritten @ T_stab: 0.7279
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+gsm8k_test_0         18       18     Y     53    0.004  0.917  256  
+gsm8k_test_1         3        3      Y     174   0.000  0.615  256  
+gsm8k_test_2         105000   70000  N     83    0.013  0.870  256  
+gsm8k_test_3         540      540    Y     30    0.000  0.953  256  
+gsm8k_test_4         20       20     Y     13    0.004  0.980  256  
+gsm8k_test_5         78       64     N     44    0.005  0.931  256  
+gsm8k_test_6         260      260    Y     188   0.000  0.563  256  
+gsm8k_test_7         120      160    N     25    0.008  0.961  256  
+gsm8k_test_8         370      45     N     95    0.008  0.852  256  
+gsm8k_test_9         460      460    Y     20    0.008  0.969  256  
+gsm8k_test_10        366      366    Y     139   0.015  0.703  256  
+gsm8k_test_11        694      694    Y     195   0.010  0.548  256  
+gsm8k_test_12        15       13     N     47    0.004  0.927  256  
+gsm8k_test_13        18       18     Y     72    0.005  0.887  256  
+gsm8k_test_14        60       60     Y     31    0.004  0.952  256  
+gsm8k_test_15        125      125    Y     15    0.008  0.977  256  
+gsm8k_test_16        230      230    Y     221   0.056  0.490  256  
+gsm8k_test_17        97500    57500  N     62    0.005  0.903  256  
+gsm8k_test_18        14       7      N     47    0.005  0.927  256  
+gsm8k_test_19        6        6      Y     36    0.000  0.944  256  
+gsm8k_test_20        18       15     N     72    0.004  0.887  256  
+gsm8k_test_21        15       14     N     177   0.006  0.613  256  
+gsm8k_test_22        7        7      Y     18    0.000  0.972  256  
+gsm8k_test_23        8        8      Y     39    0.000  0.939  256  
+gsm8k_test_24        26       26     Y     17    0.004  0.973  256  
+gsm8k_test_25        2        2      Y     15    0.000  0.977  256  
+gsm8k_test_26        242      243    N     210   0.011  0.514  256  
+gsm8k_test_27        16       16     Y     37    0.000  0.942  256  
+gsm8k_test_28        25       25     Y     30    0.004  0.953  256  
+gsm8k_test_29        104      104    Y     26    0.009  0.959  256  
+gsm8k_test_30        69       109    N     93    0.004  0.855  256  
+gsm8k_test_31        80       80     Y     59    0.004  0.908  256  
+gsm8k_test_32        35       35     Y     21    0.004  0.967  256  
+gsm8k_test_33        70       70     Y     18    0.004  0.972  256  
+gsm8k_test_34        23       23     Y     183   0.014  0.579  256  
+gsm8k_test_35        9        9      Y     76    0.000  0.881  256  
+gsm8k_test_36        375      75     N     21    0.004  0.967  256  
+gsm8k_test_37        1        2      N     16    0.000  0.975  256  
+gsm8k_test_38        12       10     N     29    0.004  0.955  256  
+gsm8k_test_39        36       18     N     33    0.004  0.948  256  
+gsm8k_test_40        8        8      Y     16    0.000  0.975  256  
+gsm8k_test_41        200      200    Y     4     0.000  0.994  256  
+gsm8k_test_42        26       26     Y     32    0.000  0.950  256  
+gsm8k_test_43        60       48     N     8     0.004  0.988  256  
+gsm8k_test_44        2000     20     N     255   0.008  0.002  256  
+gsm8k_test_45        84       104    N     159   0.010  0.654  256  
+gsm8k_test_46        163      163    Y     51    0.008  0.920  256  
+gsm8k_test_47        1400     800    N     24    0.008  0.963  256  
+gsm8k_test_48        8        8      Y     54    0.000  0.916  256  
+gsm8k_test_49        30       30     Y     68    0.004  0.894  256  
+gsm8k_test_50        288      294    N     163   0.010  0.662  256  
+gsm8k_test_51        5        5      Y     2     0.000  0.997  256  
+gsm8k_test_52        12       15     N     47    0.004  0.927  256  
+gsm8k_test_53        200      40     N     89    0.008  0.861  256  
+gsm8k_test_54        40       40     Y     51    0.005  0.920  256  
+gsm8k_test_55        14       14     Y     234   0.048  0.449  256  
+gsm8k_test_56        3        3      Y     27    0.000  0.958  256  
+gsm8k_test_57        163      83     N     72    0.008  0.887  256  
+gsm8k_test_58        57       57     Y     32    0.004  0.950  256  
+gsm8k_test_59        187      187    Y     212   0.053  0.507  256  
+gsm8k_test_60        17       17     Y     49    0.004  0.923  256  
+gsm8k_test_61        1330     1430   N     7     0.004  0.989  256  
+gsm8k_test_62        25000    25000  Y     23    0.008  0.964  256  
+gsm8k_test_63        1520     1596   N     160   0.012  0.645  256
+```
+
+### Pasted aggregate JSON (`results/llada_15_gsm8k_smoke64_results.json`)
+
+```json
+{
+  "n_trajectories": 64,
+  "n_scored_for_accuracy": 64,
+  "accuracy": 0.6094,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.6094,
+  "mean_flip_rate": 0.0071,
+  "mean_rationalization_score": 0.8515,
+  "mean_gated_rationalization_score": 0.7071,
+  "mean_early_factor": 0.7181,
+  "mean_post_change_rate": 0.9844,
+  "mean_length_growth": 0.8527,
+  "early_convergence_fraction": 0.5781,
+  "disagreement_rate": 0.9844,
+  "sbw_lockin_rate": 0.1875,
+  "mean_convergence_step": 72.1719,
+  "median_convergence_step": 47.0,
+  "mean_convergence_fraction": 0.2819,
+  "median_convergence_fraction": 0.1836,
+  "mean_answer_commitment_step": 72.1719,
+  "mean_stability_commitment_lag": 0.0,
+  "mean_unwritten_reasoning_at_convergence": 0.7279,
+  "mean_order_gap": -0.2231
+}
+```
