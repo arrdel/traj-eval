@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>traj-eval · Measuring Reasoning Regimes in Masked Diffusion Language Models</title>
+  <meta name="description" content="Interactive denoising trajectory explorer and benchmark leaderboard for masked diffusion language models (Dream-7B, LLaDA-8B-Instruct, LLaDA-1.5)." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="#" class="brand">
+        <span class="brand-badge">traj-eval</span>
+        <span class="brand-sub">Diffusion LM Trajectory Evaluation</span>
+      </a>
+      <nav class="topnav">
+        <a href="#explorer">Trajectory Scrubber</a>
+        <a href="#leaderboard">Benchmark Table</a>
+        <a href="#regimes">Paired Regimes &amp; Scatter</a>
+        <a href="#upload">Inspect Custom JSONL</a>
+        <a href="#citation">Cite</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="pill-row">
+          <span class="pill pill-accent">Paper 1 Companion &amp; Benchmark Suite</span>
+          <span class="pill">Dream-v0-Instruct-7B</span>
+          <span class="pill">LLaDA-8B-Instruct</span>
+          <span class="pill">LLaDA-1.5 (VRPO)</span>
+        </div>
+        <h1 class="hero-title">
+          Same Accuracy, Different Trajectory:<br />
+          <span>Measuring Reasoning Regimes in Masked Diffusion Language Models</span>
+        </h1>
+        <p class="hero-authors">
+          <strong>Adele Chinda</strong> &middot; Department of Computer Science, Georgia State University
+        </p>
+        <p class="hero-abstract">
+          Final-step accuracy treats a diffusion language model that locks in its answer at step 3 and spends 250 steps backfilling a post-hoc rationale identically to one that deliberates across the canvas before committing.
+          <strong><code>traj-eval</code></strong> instruments the full denoising trajectory <em>t = 1 &hellip; T</em> using three-clock decomposition—verdict stability (<em>T</em><sub>stab</sub>), answer token commitment (<em>T</em><sub>commit</sub>), and rationale unmasking fraction <em>F<sub>R</sub>(t)</em>—across <strong>ARC-Challenge</strong> and <strong>GSM8K</strong>.
+        </p>
+
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#explorer">Launch Trajectory Scrubber</a>
+          <a class="btn btn-secondary" href="https://github.com/arrdel/traj-eval" target="_blank" rel="noopener">GitHub Repository</a>
+          <a class="btn btn-secondary" href="https://huggingface.co/datasets/arrdel/traj-eval-benchmarks" target="_blank" rel="noopener">Hugging Face Dataset</a>
+          <a class="btn btn-secondary" href="https://huggingface.co/spaces/arrdel/traj-eval" target="_blank" rel="noopener">Hugging Face Space</a>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-value">3 Checkpoints</div>
+            <div class="kpi-label"><code>Dream-7B</code>, <code>LLaDA-8B-Instruct</code>, <code>LLaDA-1.5</code></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-value">19 Suites · 651 Runs</div>
+            <div class="kpi-label">All 5-item smokes &amp; 64-item paired ARC-C / GSM8K suites</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-value">3 Reasoning Clocks</div>
+            <div class="kpi-label">Verdict <em>T</em><sub>stab</sub>, Commitment <em>T</em><sub>commit</sub>, Unwritten <em>U</em></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-value">100% Reproducible</div>
+            <div class="kpi-label">Every run linked to git SHA, GPU telemetry &amp; JSONL artifacts</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 1: INTERACTIVE TRAJECTORY SCRUBBER -->
+    <section id="explorer" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <span class="section-eyebrow">Interactive Denoising Player</span>
+            <h2>Step-by-Step Trajectory Scrubber (<em>t = 1 &hellip; T</em>)</h2>
+          </div>
+          <p class="section-desc">
+            Scrub through real masked diffusion denoising steps to observe when the extracted verdict stabilizes (<em>T</em><sub>stab</sub>), when the answer token span commits (<em>T</em><sub>commit</sub>), and how much rationale is written <em>after</em> the verdict is already locked in.
+          </p>
+        </div>
+
+        <div class="preset-bar">
+          <span class="preset-label">Regime Presets:</span>
+          <button class="chip-btn active" data-preset-suite="dream_arcc_smoke64_reasoning" data-preset-item="Mercury_407327">
+            Dream-7B ARC-C Reasoning (Deliberation)
+          </button>
+          <button class="chip-btn" data-preset-suite="llada_15_arcc_smoke64_reasoning" data-preset-item="Mercury_7175875">
+            LLaDA-1.5 ARC-C Reasoning (92.2% Acc Suite)
+          </button>
+          <button class="chip-btn" data-preset-suite="llada_15_gsm8k_smoke64" data-preset-item="gsm8k_0">
+            LLaDA-1.5 GSM8K (Answer-First Backfill, U=0.73)
+          </button>
+          <button class="chip-btn" data-preset-suite="dream_gsm8k_smoke64" data-preset-item="gsm8k_0">
+            Dream-7B GSM8K (Step-by-Step Numeric)
+          </button>
+          <button class="chip-btn" data-preset-suite="dream_arcc_eos_suppression_k64_smoke5" data-preset-item="Mercury_7175875">
+            Dream-7B EOS Suppression (k=64 Intervention)
+          </button>
+        </div>
+
+        <div class="card explorer-card">
+          <div class="controls-grid">
+            <div class="control-group">
+              <label for="suite-select">Benchmark Suite</label>
+              <select id="suite-select"></select>
+            </div>
+            <div class="control-group">
+              <label for="item-select">Trajectory Item ID</label>
+              <select id="item-select"></select>
+            </div>
+            <div class="control-group">
+              <label>Playback Controls</label>
+              <div class="playback-btns">
+                <button id="btn-play" class="btn btn-sm btn-primary">&#9654; Play</button>
+                <button id="btn-prev" class="btn btn-sm" title="Previous Step">&larr;</button>
+                <button id="btn-next" class="btn btn-sm" title="Next Step">&rarr;</button>
+                <button id="btn-jump-stab" class="btn btn-sm btn-outline" title="Jump to Verdict Convergence Step">Jump <em>T</em><sub>stab</sub></button>
+                <button id="btn-jump-commit" class="btn btn-sm btn-outline" title="Jump to Answer Commitment Step">Jump <em>T</em><sub>commit</sub></button>
+                <select id="speed-select" aria-label="Playback Speed">
+                  <option value="120">1x</option>
+                  <option value="55" selected>2x</option>
+                  <option value="22">4x</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="scrubber-box">
+            <div class="scrubber-header">
+              <div class="step-readout">
+                Denoising Step <strong id="step-current">1</strong> / <span id="step-total">256</span>
+                <span id="step-phase-badge" class="badge badge-neutral">Pre-Convergence</span>
+              </div>
+              <div class="clock-markers-legend">
+                <span class="legend-dot dot-stab"></span> <em>T</em><sub>stab</sub> = <strong id="marker-tstab-val">&ndash;</strong>
+                <span class="legend-dot dot-commit"></span> <em>T</em><sub>commit</sub> = <strong id="marker-tcommit-val">&ndash;</strong>
+              </div>
+            </div>
+
+            <div class="slider-wrapper">
+              <input type="range" id="step-slider" min="1" max="256" value="1" />
+              <div id="slider-marker-stab" class="slider-marker marker-stab" title="T_stab"></div>
+              <div id="slider-marker-commit" class="slider-marker marker-commit" title="T_commit"></div>
+            </div>
+
+            <div class="barcode-label-row">
+              <span>Step-by-Step Verdict Timeline (gray = <code>null</code>/masked, green = gold match, amber = non-gold verdict)</span>
+              <span id="step-confidence-readout"></span>
+            </div>
+            <div id="verdict-barcode" class="verdict-barcode" title="Click any step along the timeline to jump"></div>
+          </div>
+
+          <div class="explorer-split">
+            <div class="canvas-pane">
+              <div class="pane-header">
+                <h3>Prompt &amp; Live Denoising Canvas</h3>
+                <div class="verdict-pills">
+                  <span class="pill-kv">Step Verdict: <strong id="live-verdict">&ndash;</strong></span>
+                  <span class="pill-kv">Gold Answer: <strong id="live-gold">&ndash;</strong></span>
+                  <span class="pill-kv">Answer Span Committed: <strong id="live-committed">&ndash;</strong></span>
+                </div>
+              </div>
+
+              <details class="prompt-Box" open>
+                <summary>Input Prompt</summary>
+                <pre id="trajectory-prompt" class="prompt-pre"></pre>
+              </details>
+
+              <div class="rationale-progress-row">
+                <span>Committed Rationale Fraction <em>F<sub>R</sub>(t)</em></span>
+                <strong id="live-fr-val">0.0%</strong>
+              </div>
+              <div class="progress-track">
+                <div id="live-fr-bar" class="progress-fill" style="width: 0%"></div>
+              </div>
+
+              <div class="canvas-output-label">
+                <span>Decoded Canvas at Step <span id="canvas-step-num">1</span></span>
+                <span class="canvas-hint">Unmasked text shown inline &middot; <code>[MASK]</code> runs collapsed as badges</span>
+              </div>
+              <div id="denoising-canvas" class="denoising-canvas"></div>
+            </div>
+
+            <div class="metrics-pane">
+              <div class="pane-header">
+                <h3>Trajectory Regime Scorecard</h3>
+                <span id="regime-classification-badge" class="badge badge-accent">Deliberative</span>
+              </div>
+
+              <div class="metric-cards-grid">
+                <div class="mini-metric">
+                  <span class="mm-label">Final / Gold</span>
+                  <span class="mm-val" id="m-final-gold">&ndash;</span>
+                  <span class="mm-sub" id="m-correct-tag">&ndash;</span>
+                </div>
+                <div class="mini-metric">
+                  <span class="mm-label">Verdict <em>T</em><sub>stab</sub></span>
+                  <span class="mm-val" id="m-tstab">&ndash;</span>
+                  <span class="mm-sub" id="m-tstab-frac">&ndash;</span>
+                </div>
+                <div class="mini-metric">
+                  <span class="mm-label">Commit <em>T</em><sub>commit</sub></span>
+                  <span class="mm-val" id="m-tcommit">&ndash;</span>
+                  <span class="mm-sub" id="m-lag">&ndash;</span>
+                </div>
+                <div class="mini-metric">
+                  <span class="mm-label">Unwritten <em>U</em> at <em>T</em><sub>stab</sub></span>
+                  <span class="mm-val" id="m-unwritten">&ndash;</span>
+                  <span class="mm-sub">1 &minus; <em>F<sub>R</sub>(T</em><sub>stab</sub><em>)</em></span>
+                </div>
+                <div class="mini-metric">
+                  <span class="mm-label">Order Gap</span>
+                  <span class="mm-val" id="m-order-gap">&ndash;</span>
+                  <span class="mm-sub">&lt; 0: answer-first backfill</span>
+                </div>
+                <div class="mini-metric">
+                  <span class="mm-label">Verdict Flip Rate</span>
+                  <span class="mm-val" id="m-flip-rate">&ndash;</span>
+                  <span class="mm-sub" id="m-consistency">&ndash;</span>
+                </div>
+              </div>
+
+              <div class="rat-breakdown">
+                <h4>Decomposed Rationalization Components</h4>
+                <div class="rat-bar-row">
+                  <div class="rat-bar-label">
+                    <span>Early Convergence Factor (<code>1 &minus; T_stab/T</code>)</span>
+                    <strong id="m-early-factor">0.0000</strong>
+                  </div>
+                  <div class="progress-track sm"><div id="bar-early-factor" class="progress-fill" style="width:0%"></div></div>
+                </div>
+                <div class="rat-bar-row">
+                  <div class="rat-bar-label">
+                    <span>Post-Convergence Change Rate</span>
+                    <strong id="m-post-change">0.0000</strong>
+                  </div>
+                  <div class="progress-track sm"><div id="bar-post-change" class="progress-fill" style="width:0%"></div></div>
+                </div>
+                <div class="rat-bar-row">
+                  <div class="rat-bar-label">
+                    <span>Post-Convergence Length Growth</span>
+                    <strong id="m-length-growth">0.0000</strong>
+                  </div>
+                  <div class="progress-track sm"><div id="bar-length-growth" class="progress-fill" style="width:0%"></div></div>
+                </div>
+                <div class="rat-scores-footer">
+                  <div>
+                    <span class="rat-score-title">Additive Score</span>
+                    <strong id="m-rat-score">0.0000</strong>
+                  </div>
+                  <div>
+                    <span class="rat-score-title">Multiplicative Gated Score</span>
+                    <strong id="m-gated-score" class="highlight-val">0.0000</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: BENCHMARK LEADERBOARD -->
+    <section id="leaderboard" class="section section-alt">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <span class="section-eyebrow">Pre-Registered Evaluation Suites</span>
+            <h2>Benchmark Leaderboard &amp; Trajectory Telemetry</h2>
+          </div>
+          <div class="filter-controls">
+            <select id="filter-scale" aria-label="Filter by Scale">
+              <option value="64" selected>64-Item Main Benchmark Suites (9)</option>
+              <option value="5">5-Item Validation &amp; Intervention Smokes (10)</option>
+              <option value="all">All 19 Pre-Registered Suites</option>
+            </select>
+            <select id="filter-task" aria-label="Filter by Task">
+              <option value="all" selected>All Tasks (ARC-C + GSM8K)</option>
+              <option value="arcc">ARC-Challenge Only</option>
+              <option value="gsm8k">GSM8K Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-card card">
+          <div class="table-scroll">
+            <table class="benchmark-table" id="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Model Checkpoint</th>
+                  <th>Task &amp; Condition</th>
+                  <th class="num">N</th>
+                  <th class="num">Accuracy</th>
+                  <th class="num">Coverage</th>
+                  <th class="num">Flip Rate</th>
+                  <th class="num">Mean <em>T</em><sub>stab</sub></th>
+                  <th class="num">Mean <em>T</em><sub>commit</sub></th>
+                  <th class="num">Unwritten <em>U</em></th>
+                  <th class="num">Order Gap</th>
+                  <th class="num">Gated Rat.</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: PAIRED COMPARISONS & INTERACTIVE SCATTER -->
+    <section id="regimes" class="section">
+      <div class="container">
+        <div class="section-header">
+          <div>
+            <span class="section-eyebrow">Paired Condition Analysis</span>
+            <h2>Direct vs. Canonical Reasoning &amp; Item-Level Scatter</h2>
+          </div>
+          <p class="section-desc">
+            Paired 64-item evaluations on ARC-Challenge reveal opposite deliberation effects across model families: forcing rationale-first generation slightly hurts <code>Dream-v0-Instruct-7B</code> (&minus;6.25 pp) while improving both <code>LLaDA-8B-Instruct</code> (+3.12 pp) and VRPO-tuned <code>LLaDA-1.5</code> (+4.69 pp).
+          </p>
+        </div>
+
+        <div id="comparisons-grid" class="comparisons-grid"></div>
+
+        <div class="card scatter-card">
+          <div class="scatter-header">
+            <div>
+              <h3>Per-Trajectory Metric Explorer (Click any point to load in Scrubber)</h3>
+              <p class="section-desc">Inspect all 64 trajectories in any benchmark suite across any pair of trajectory metrics.</p>
+            </div>
+            <div class="scatter-controls">
+              <select id="scatter-suite" aria-label="Scatter Suite"></select>
+              <select id="scatter-x" aria-label="X Axis Metric">
+                <option value="convergence_step" selected>X: Verdict Convergence Step (T_stab)</option>
+                <option value="answer_commitment_step">X: Answer Commitment Step (T_commit)</option>
+                <option value="convergence_fraction">X: Convergence Fraction (T_stab / T)</option>
+                <option value="order_gap">X: Order Gap</option>
+                <option value="unwritten_reasoning_at_convergence">X: Unwritten Reasoning U</option>
+              </select>
+              <select id="scatter-y" aria-label="Y Axis Metric">
+                <option value="gated_rationalization_score" selected>Y: Gated Rationalization Score</option>
+                <option value="answer_commitment_step">Y: Answer Commitment Step (T_commit)</option>
+                <option value="unwritten_reasoning_at_convergence">Y: Unwritten Reasoning U</option>
+                <option value="post_change_rate">Y: Post-Convergence Change Rate</option>
+                <option value="flip_rate">Y: Verdict Flip Rate</option>
+                <option value="order_gap">Y: Order Gap</option>
+              </select>
+            </div>
+          </div>
+          <div class="scatter-body">
+            <svg id="scatter-svg" viewBox="0 0 760 340" role="img" aria-label="Per-trajectory metric scatter plot"></svg>
+            <div class="scatter-legend">
+              <span><i class="dot dot-correct"></i> Correct Final Verdict</span>
+              <span><i class="dot dot-wrong"></i> Incorrect / Undecided Final Verdict</span>
+              <span class="scatter-hint">Click a point to inspect its step-by-step denoising trajectory above</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: CLIENT-SIDE CUSTOM JSONL UPLOADER -->
+    <section id="upload" class="section section-alt">
+      <div class="container">
+        <div class="card upload-card">
+          <div class="upload-info">
+            <span class="section-eyebrow">Bring Your Own Trajectory</span>
+            <h2>Client-Side <code>.jsonl</code> Trajectory Inspector</h2>
+            <p>
+              Have a custom <code>traj-eval</code> run from <code>experiments/run_dream_arcc_smoke.py</code>?
+              Select or drop your <code>.jsonl</code> file below to parse its steps 100% locally in your browser and scrub through every denoising step in the player above.
+            </p>
+            <div class="upload-controls">
+              <label class="btn btn-primary file-label">
+                Load Custom <code>.jsonl</code> File
+                <input type="file" id="jsonl-file-input" accept=".jsonl,.json" hidden />
+              </label>
+              <span id="upload-status" class="upload-status">No custom file loaded.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: CITATION & QUICKSTART -->
+    <section id="citation" class="section">
+      <div class="container">
+        <div class="citation-grid">
+          <div class="card">
+            <h3>Reproduce or Score Runs via CLI</h3>
+            <pre class="code-block"><code># 1. Install traj-eval in editable mode (zero heavy deps for scoring)
+pip install -e ".[dev]"
+pytest -q
+
+# 2. Score any trajectory JSONL &amp; compare paired conditions
+traj-eval score results/llada_15_arcc_smoke64_reasoning.jsonl \
+  --compare results/llada_15_arcc_smoke64_direct.jsonl \
+  --label-base direct_64 --label-target reasoning_64</code></pre>
+          </div>
+          <div class="card">
+            <h3>BibTeX Citation</h3>
+            <pre class="code-block"><code>@article{chinda2026trajeval,
+  title   = {Same Accuracy, Different Trajectory: Measuring Reasoning Regimes in Masked Diffusion Language Models},
+  author  = {Chinda, Adele},
+  year    = {2026},
+  journal = {Georgia State University Preprint},
+  url     = {https://github.com/arrdel/traj-eval}
+}</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span><strong>traj-eval</strong> &middot; MIT License &middot; Adele Chinda (Georgia State University)</span>
+      <span>Built for GitHub Pages &amp; Hugging Face Spaces</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
