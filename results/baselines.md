@@ -26,7 +26,7 @@ Chosen 17 Oct 2026. Text trio first, because Yeom et al. (arXiv:2608.05687) alre
 | Checkpoint | Hugging Face id | Status |
 |---|---|---|
 | LLaDA-8B-Instruct | `GSAI-ML/LLaDA-8B-Instruct` | All 5-item (ARC-C direct, ARC-C reasoning, GSM8K) and 64-item (ARC-C direct, ARC-C canonical reasoning, GSM8K) suites completed (2026-11-01). |
-| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | 5-item ARC-C (direct & reasoning) and GSM8K validation smokes clean + 64-item ARC-C direct suite completed (2026-11-01). 64-item ARC-C reasoning & 64-item GSM8K suites pending next PRs. |
+| LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | 5-item ARC-C (direct & reasoning) and GSM8K validation smokes clean + 64-item ARC-C paired (direct & canonical reasoning) suites completed (2026-11-01). 64-item GSM8K suite pending next PR. |
 | Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct, reasoning, EOS-suppression K=64, & GSM8K smokes clean + 64-item ARC-C paired (direct & canonical reasoning) and 64-item GSM8K suites completed (2026-10-30 / 2026-11-01). |
 | MMaDA-8B-MixCoT (holdout) | `Gen-Verse/MMaDA-8B-MixCoT` | Not in the first suite. |
 
@@ -1748,3 +1748,152 @@ TIMSS_2003_8_pg80    C        C      Y     49    0.000  0.923  256
 | `length_growth` | 0.9929 | 0.9828 | -0.0101 |
 | `score` | 0.9917 | 0.9464 | -0.0453 |
 | `gated_score` | 0.9818 | 0.8732 | -0.1086 |
+
+## LLaDA-1.5 — ARC-C 64-item canonical reasoning suite (smoke clean (64/64 decided))
+
+- **Date (UTC):** 2026-11-07
+- **Job ID:** `llada_15_arcc_smoke64_reasoning`
+- **Git revision (`git rev-parse HEAD` at run):** `0870b06e2d055dfde520c6e5a5be690535e52fab`
+- **Environment:** conda env `cdr-gpu` (`torch 2.5.1+cu121`, `transformers 4.46.2`)
+- **GPU:** index `0` (`CUDA_VISIBLE_DEVICES=0`, `NVIDIA GeForce RTX 4090`, `24210 MiB` free at launch)
+- **`nvidia-smi` at launch:**
+  ```
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  1, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  2, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  3, NVIDIA GeForce RTX 4090, 2 MiB, 24564 MiB, 0 %
+  ```
+- **Sampler & adapter config:** `model_family=llada-1.5, temperature=0.0, remasking=low_confidence, steps=256, gen_length=256, block_length=256, confidence_eos_eot_inf=True, frontier_width=None`
+- **Artifacts:**
+  - Input: `results/arcc_smoke64_reasoning_input.json`
+  - Fixed IDs: `results/arcc_smoke64_ids.json`
+  - Trajectories: `results/llada_15_arcc_smoke64_reasoning.jsonl`
+  - Run log: `results/llada_15_arcc_smoke64_reasoning_run_log.json`
+  - Scored output: `results/llada_15_arcc_smoke64_reasoning_results.json`
+- **Undecided count:** **0 undecided** (64 / 64 non-null at final step).
+
+### Pasted `traj-eval run` output
+
+```
+=== traj-eval summary ===
+Trajectories:            64
+Accuracy (final):        0.9219
+Mean flip rate:          0.0003
+Mean rationalization:    0.9652
+  [components] early=0.9151 post_change=1.0000 len_growth=0.9958 gated=0.9146
+Early convergence frac:  0.9062
+Mean convergence step:   21.73
+Median convergence step: 12.50
+Mean convergence frac:   0.0849
+Mean T_commit step:      21.73
+Mean lag (T_comm-T_stab):0.00
+Mean unwritten @ T_stab: 0.8906
+
+Per-trajectory:
+id                   final    gold   corr  conv  flip   rat    steps
+--------------------------------------------------------------------
+Mercury_7175875      C        C      Y     4     0.000  0.994  256  
+Mercury_SC_409171    B        B      Y     8     0.000  0.988  256  
+Mercury_SC_408547    C        C      Y     36    0.000  0.944  256  
+Mercury_407327       D        D      Y     4     0.000  0.994  256  
+MCAS_2006_9_44       D        D      Y     17    0.000  0.973  256  
+Mercury_7270393      B        B      Y     17    0.000  0.973  256  
+MCAS_2014_5_7        C        C      Y     4     0.000  0.994  256  
+Mercury_7086660      C        C      Y     4     0.000  0.994  256  
+Mercury_7168805      B        B      Y     5     0.000  0.992  256  
+MCAS_2003_8_11       A        A      Y     1     0.000  0.998  256  
+Mercury_7250058      C        B      N     5     0.000  0.992  256  
+Mercury_7012740      A        A      Y     36    0.000  0.944  256  
+Mercury_LBS10610     C        C      Y     19    0.000  0.970  256  
+Mercury_SC_407400    C        C      Y     2     0.000  0.997  256  
+Mercury_7212993      C        C      Y     24    0.000  0.963  256  
+Mercury_SC_413240    A        A      Y     16    0.000  0.975  256  
+Mercury_7186358      C        C      Y     4     0.000  0.994  256  
+Mercury_7166425      B        B      Y     15    0.000  0.977  256  
+MDSA_2007_8_3        A        A      Y     11    0.000  0.983  256  
+Mercury_7094290      C        C      Y     5     0.000  0.992  256  
+Mercury_7186568      B        B      Y     56    0.000  0.912  256  
+Mercury_402216       B        B      Y     5     0.000  0.992  256  
+Mercury_404894       A        A      Y     3     0.000  0.995  256  
+MCAS_2002_8_11       C        C      Y     5     0.000  0.992  256  
+Mercury_SC_405086    B        B      Y     21    0.000  0.967  256  
+Mercury_SC_408324    D        D      Y     4     0.000  0.994  256  
+Mercury_7218820      B        B      Y     12    0.000  0.981  256  
+Mercury_412202       B        B      Y     69    0.000  0.892  256  
+Mercury_SC_409139    C        C      Y     5     0.000  0.992  256  
+Mercury_400687       B        B      Y     32    0.000  0.950  256  
+Mercury_7171605      D        D      Y     4     0.000  0.994  256  
+Mercury_7210245      C        C      Y     4     0.000  0.994  256  
+AKDE&ED_2008_4_25    A        A      Y     36    0.000  0.944  256  
+AKDE&ED_2008_4_19    C        C      Y     42    0.000  0.934  256  
+Mercury_SC_400402    A        A      Y     33    0.000  0.948  256  
+Mercury_7234308      A        A      Y     61    0.000  0.905  256  
+ACTAAP_2014_5_8      B        B      Y     6     0.000  0.991  256  
+Mercury_400407       C        B      N     57    0.000  0.911  256  
+Mercury_7116288      C        C      Y     18    0.000  0.972  256  
+MCAS_2004_9_15-v1    B        B      Y     37    0.004  0.942  256  
+NYSEDREGENTS_2015_4_26 C        C      Y     6     0.000  0.991  256  
+Mercury_SC_401620    A        A      Y     36    0.000  0.944  256  
+Mercury_400877       C        C      Y     160   0.000  0.696  256  
+Mercury_7174213      D        D      Y     4     0.000  0.994  256  
+NYSEDREGENTS_2008_8_34 B        B      Y     4     0.000  0.994  256  
+Mercury_7212398      B        B      Y     17    0.000  0.973  256  
+Mercury_SC_401290    C        C      Y     29    0.004  0.955  256  
+Mercury_SC_402120    C        C      Y     129   0.007  0.798  256  
+Mercury_184975       C        C      Y     13    0.000  0.980  256  
+Mercury_SC_400578    B        A      N     29    0.004  0.955  256  
+MCAS_2001_8_4        D        D      Y     27    0.000  0.958  256  
+MCAS_2003_5_33       C        C      Y     4     0.000  0.994  256  
+Mercury_7068513      A        A      Y     27    0.000  0.958  256  
+AKDE&ED_2008_4_26    B        C      N     41    0.000  0.936  256  
+Mercury_7235638      C        C      Y     14    0.000  0.978  256  
+MDSA_2009_5_20       B        B      Y     39    0.000  0.939  256  
+Mercury_178325       D        C      N     5     0.000  0.992  256  
+Mercury_7212678      A        A      Y     4     0.000  0.994  256  
+TAKS_2009_8_32       A        A      Y     7     0.000  0.989  256  
+Mercury_412681       C        C      Y     4     0.000  0.994  256  
+Mercury_400440       D        D      Y     3     0.000  0.995  256  
+Mercury_SC_416529    B        B      Y     7     0.000  0.989  256  
+MCAS_2006_8_1        D        D      Y     4     0.000  0.994  256  
+TIMSS_2003_8_pg80    C        C      Y     31    0.000  0.952  256
+```
+
+### Pasted aggregate JSON (`results/llada_15_arcc_smoke64_reasoning_results.json`)
+
+```json
+{
+  "n_trajectories": 64,
+  "n_scored_for_accuracy": 64,
+  "accuracy": 0.9219,
+  "coverage": 1.0,
+  "conditional_accuracy": 0.9219,
+  "mean_flip_rate": 0.0003,
+  "mean_rationalization_score": 0.9652,
+  "mean_gated_rationalization_score": 0.9146,
+  "mean_early_factor": 0.9151,
+  "mean_post_change_rate": 1.0,
+  "mean_length_growth": 0.9958,
+  "early_convergence_fraction": 0.9062,
+  "disagreement_rate": 1.0,
+  "sbw_lockin_rate": 0.0625,
+  "mean_convergence_step": 21.7344,
+  "median_convergence_step": 12.5,
+  "mean_convergence_fraction": 0.0849,
+  "median_convergence_fraction": 0.0488,
+  "mean_answer_commitment_step": 21.7344,
+  "mean_stability_commitment_lag": 0.0,
+  "mean_unwritten_reasoning_at_convergence": 0.8906,
+  "mean_order_gap": -0.3989
+}
+```
+
+### Side-by-side rationalization components (`direct_64` vs `reasoning_64`)
+
+| Component | `direct_64` | `reasoning_64` | Delta (`reasoning_64 - direct_64`) |
+|---|---:|---:|---:|
+| `early_factor` | 0.9711 | 0.9151 | -0.0560 |
+| `post_change_rate` | 1.0000 | 1.0000 | +0.0000 |
+| `length_growth` | 0.9856 | 0.9958 | +0.0102 |
+| `score` | 0.9856 | 0.9652 | -0.0204 |
+| `gated_score` | 0.9707 | 0.9146 | -0.0561 |
