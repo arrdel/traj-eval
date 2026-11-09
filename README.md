@@ -4,6 +4,8 @@ Trajectory-level evaluation for diffusion language models.
 
 **Measure reasoning *in* the denoising trajectory, not just final-answer accuracy.**
 
+Project page: [https://arrdel.github.io/traj-eval/](https://arrdel.github.io/traj-eval/) (static source in `site/`).
+
 ## Why final-answer accuracy lies
 
 Two models can have identical final-answer accuracy for very different reasons:
