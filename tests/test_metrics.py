@@ -293,16 +293,32 @@ def test_order_gap_answer_first_negative():
 
 
 def test_sbw_lockin_separates_benign_from_wrong_early_convergence():
-    # Converges at step 0 of 10 (conv_frac = 0.0 <= 0.2), wrong answer -> SBW lock-in True.
+    # LOCKR (arXiv:2609.27220v2, Section 3.1): T=10 -> c = round(0.5*9) = 5,
+    # w = max(1, ceil(6/2)) = 3 -> midpoint window is indices [3, 4, 5].
     wrong_early = _traj(["A"] * 10, gold="B", tid="sbw")
-    # Converges at step 0 of 10, right answer -> Benign lock-in (SBW False).
     right_early = _traj(["B"] * 10, gold="B", tid="benign")
-    # Converges at step 8 of 10 (conv_frac = 0.8 > 0.2), wrong answer -> Not early lock-in.
     wrong_late = _traj(["B"] * 8 + ["A", "A"], gold="B", tid="late")
 
     assert is_sbw_lockin(wrong_early) is True
     assert is_sbw_lockin(right_early) is False
     assert is_sbw_lockin(wrong_late) is False
+
+    # Reproduce LOCKR Section 3.1 exact midpoint window definition on T=8:
+    # c = round(0.5 * 7) = 4, w = max(1, ceil(5 / 2)) = 3 -> window indices [2, 3, 4].
+    # Case 1: answers at [2, 3, 4] are all "A" (!= gold "B"), even though step 0 is None,
+    # step 1 is "B", and steps 6..7 later repair to "B". LOCKR Section 3.1 specifies:
+    # "The label is determined at the intermediate checkpoint and does not require the
+    # answer to remain unchanged throughout the remaining denoising steps."
+    lockr_midpoint_sbw = _traj(
+        [None, "B", "A", "A", "A", "A", "B", "B"], gold="B", tid="lockr-mid"
+    )
+    assert is_sbw_lockin(lockr_midpoint_sbw) is True
+
+    # Case 2: window [2, 3, 4] is ["B", "A", "A"] (not identical across window) -> False.
+    lockr_unsettled_window = _traj(
+        [None, "B", "B", "A", "A", "A", "A", "A"], gold="B", tid="lockr-unsettled"
+    )
+    assert is_sbw_lockin(lockr_unsettled_window) is False
 
 
 def test_coverage_accuracy_decomposition_exact_identity():
@@ -353,6 +369,31 @@ def test_cotsel_selection_gap_and_stratified_evaluation():
     assert gap["incorrect_mean"] == pytest.approx(0.0)
     assert gap["selection_gap"] == pytest.approx(0.5)
 
+    # Hand-built 5-item verification against CoTsel Proposition 1 (arXiv:2610.37070v1, Eq. 14--16):
+    # Delta = E[A | C=1] - E[A] = Cov(A, C) / P(C=1)
+    # Construct 5 trajectories with known metric A_i and correctness C_i in {0, 1}:
+    # i=0: C=1, A=0.8; i=1: C=1, A=0.6; i=2: C=1, A=0.4; i=3: C=0, A=0.2; i=4: C=0, A=0.0
+    cohort = [
+        _traj(["B"], gold="B", tid="t0"),
+        _traj(["B"], gold="B", tid="t1"),
+        _traj(["B"], gold="B", tid="t2"),
+        _traj(["A"], gold="B", tid="t3"),
+        _traj(["A"], gold="B", tid="t4"),
+    ]
+    a_map = {"t0": 0.8, "t1": 0.6, "t2": 0.4, "t3": 0.2, "t4": 0.0}
+    A_vals = [0.8, 0.6, 0.4, 0.2, 0.0]
+    C_vals = [1.0, 1.0, 1.0, 0.0, 0.0]
+    mean_A = sum(A_vals) / 5.0  # 0.4
+    mean_C = sum(C_vals) / 5.0  # 0.6
+    cov_AC = sum((a - mean_A) * (c - mean_C) for a, c in zip(A_vals, C_vals)) / 5.0  # 0.12
+    expected_delta = cov_AC / mean_C  # 0.12 / 0.6 = 0.2
+
+    res_cohort = cotsel_selection_gap(cohort, lambda t: a_map[t.id])
+    assert res_cohort["all_mean"] == pytest.approx(0.4)
+    assert res_cohort["correct_mean"] == pytest.approx(0.6)
+    assert res_cohort["incorrect_mean"] == pytest.approx(0.1)
+    assert res_cohort["selection_gap"] == pytest.approx(expected_delta)
+
     strat = stratified_evaluation([t_corr, t_incorr])
     assert strat["correct"]["n"] == 1
     assert strat["incorrect"]["n"] == 1
@@ -377,18 +418,29 @@ def test_paired_bootstrap_delta_and_pass_at_k():
     assert boot["delta"] == pytest.approx(0.5)
     assert boot["ci_low"] <= boot["delta"] <= boot["ci_high"]
 
-    # Pass@k across 2 prompts, 4 rollouts each.
-    rollouts = [
+    # Hand-built verification of unbiased Pass@k = 1 - comb(n - c, k) / comb(n, k)
+    # (Chen et al. 2021; Ni et al. 2026, arXiv:2601.15165, Section 2.1) for n=6, c=2:
+    # k=1: 1 - 4/6 = 1/3; k=2: 1 - 6/15 = 0.6; k=3: 1 - 4/20 = 0.8; k=4: 1 - 1/15 = 14/15; k=5: 1.0
+    rollouts_6 = [
         Trajectory(id="p1#0", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="B", reasoning_text="r1")]),
-        Trajectory(id="p1#1", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="A", reasoning_text="r2")]),
-        Trajectory(id="p1#2", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="C", reasoning_text="r3")]),
-        Trajectory(id="p1#3", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="D", reasoning_text="r4")]),
+        Trajectory(id="p1#1", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="B", reasoning_text="r2")]),
+        Trajectory(id="p1#2", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="A", reasoning_text="r3")]),
+        Trajectory(id="p1#3", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="A", reasoning_text="r3")]),
+        Trajectory(id="p1#4", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="C", reasoning_text="r4")]),
+        Trajectory(id="p1#5", prompt="P1", gold_answer="B", steps=[TrajectoryStep(step=0, prediction="D", reasoning_text="r5")]),
     ]
-    pk = pass_at_k_metrics(rollouts, ks=(1, 2, 4))
+    pk = pass_at_k_metrics(rollouts_6, ks=(1, 2, 3, 4, 5))
     assert pk["n_prompts"] == 1
-    assert pk["pass_at_k"]["pass@1"] == pytest.approx(0.25)
-    assert pk["pass_at_k"]["pass@4"] == pytest.approx(1.0)
-    assert pk["mean_unique_answer_ratio"] == pytest.approx(1.0)
+    assert pk["mean_rollouts_per_prompt"] == pytest.approx(6.0)
+    assert pk["pass_at_k"]["pass@1"] == pytest.approx(1.0 / 3.0, abs=1e-4)
+    assert pk["pass_at_k"]["pass@2"] == pytest.approx(0.6, abs=1e-4)
+    assert pk["pass_at_k"]["pass@3"] == pytest.approx(0.8, abs=1e-4)
+    assert pk["pass_at_k"]["pass@4"] == pytest.approx(14.0 / 15.0, abs=1e-4)
+    assert pk["pass_at_k"]["pass@5"] == pytest.approx(1.0, abs=1e-4)
+    # 4 unique predictions {"A", "B", "C", "D"} out of 6 non-null rollouts = 4/6
+    assert pk["mean_unique_answer_ratio"] == pytest.approx(4.0 / 6.0, abs=1e-4)
+    # 5 unique rationales {"r1", "r2", "r3", "r4", "r5"} out of 6 rollouts = 5/6
+    assert pk["mean_unique_rationale_ratio"] == pytest.approx(5.0 / 6.0, abs=1e-4)
 
 
 def test_reasoning_smoke_gate_and_compare_conditions(tmp_path):
