@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>traj-eval: Measure reasoning in the denoising trajectory</title>
+  <meta name="description" content="Trajectory-level evaluation for masked diffusion language models. Measure reasoning in the denoising trajectory, not just final-answer accuracy." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="#top" class="brand">
+        <span class="brand-badge">traj-eval</span>
+        <span class="brand-sub">Diffusion LM Trajectory Evaluation</span>
+      </a>
+      <nav class="topnav" aria-label="Section navigation">
+        <a href="#why-accuracy-lies">Why Accuracy Lies</a>
+        <a href="#trajectory-chart">Trajectory Chart</a>
+        <a href="#results">Results</a>
+        <a href="#metrics">Metrics</a>
+        <a href="#install">Install</a>
+        <a href="#caveats">Caveats</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- 1. HERO -->
+    <section class="hero">
+      <div class="container">
+        <p class="eyebrow">Paper 1 Companion (In Preparation, Target ICLR/ICML 2027)</p>
+        <h1 class="hero-title">traj-eval</h1>
+        <p class="hero-tagline">
+          Measure reasoning in the denoising trajectory, not just final-answer accuracy.
+        </p>
+        <p class="hero-body">
+          Two models can have identical final-answer accuracy for very different reasons: genuine reasoning, rationalization, and oscillation. Final-step evaluation collapses the entire denoising process into a single endpoint prediction, hiding when a verdict stabilized and how the intermediate rationale developed. <code>traj-eval</code> instruments and scores the full step-by-step denoising trajectory so these reasoning regimes can be distinguished.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/arrdel/traj-eval" target="_blank" rel="noopener">GitHub repo</a>
+          <a class="btn btn-secondary" href="#install">Install</a>
+          <a class="btn btn-secondary" href="#results">Results</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. WHY ACCURACY LIES -->
+    <section id="why-accuracy-lies" class="section">
+      <div class="container">
+        <span class="section-eyebrow">Section 1</span>
+        <h2>Why accuracy lies</h2>
+        <p class="section-intro">
+          Evaluating only the final denoised output treats three distinct trajectory behaviors as identical whenever they end on the same answer:
+        </p>
+
+        <div class="archetype-grid">
+          <div class="card archetype-card">
+            <div class="archetype-header">
+              <h3>Genuine reasoning</h3>
+              <span class="tag tag-green">Reasoning drives verdict</span>
+            </div>
+            <p>
+              The verdict changes as reasoning develops across intermediate denoising steps, then stabilizes once the derivation supports a conclusion.
+            </p>
+          </div>
+
+          <div class="card archetype-card">
+            <div class="archetype-header">
+              <h3>Rationalization</h3>
+              <span class="tag tag-amber">Verdict drives reasoning</span>
+            </div>
+            <p>
+              The verdict is fixed in the first few steps, and reasoning text is elaborated afterwards to justify the already locked-in answer.
+            </p>
+          </div>
+
+          <div class="card archetype-card">
+            <div class="archetype-header">
+              <h3>Oscillation</h3>
+              <span class="tag tag-rose">Unsettled trajectory</span>
+            </div>
+            <p>
+              The verdict flips repeatedly across denoising steps and never settles until the final step, even if the final answer happens to be right.
+            </p>
+          </div>
+        </div>
+
+        <div class="card synthetic-callout">
+          <div class="synthetic-header">
+            <div>
+              <span class="badge badge-synthetic">Synthetic Demo Only (Not Model Evidence)</span>
+              <h3>v0.1 Synthetic Benchmark (<code>examples/synthetic_demo.jsonl</code>)</h3>
+            </div>
+            <p class="synthetic-note">
+              In the built-in 15-trajectory synthetic demo (5 trajectories per archetype), every trajectory ends on the correct gold answer (final accuracy = <code>1.0000</code> for all three archetypes). Final-answer accuracy cannot tell them apart; trajectory metrics separate them cleanly. This v0.1 split is synthetic and is used for pipeline demos and unit tests, not as evidence about any real model checkpoint.
+            </p>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table compact-table">
+              <thead>
+                <tr>
+                  <th>Archetype (Synthetic v0.1)</th>
+                  <th class="num">Trajectories</th>
+                  <th class="num">Final Accuracy</th>
+                  <th class="num">Convergence Step</th>
+                  <th class="num">Flip Rate</th>
+                  <th class="num">Rationalization Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Genuine reasoning</strong> (<code>genuine-0..4</code>)</td>
+                  <td class="num">5</td>
+                  <td class="num">1.0000</td>
+                  <td class="num">4</td>
+                  <td class="num">0.286</td>
+                  <td class="num">0.333</td>
+                </tr>
+                <tr>
+                  <td><strong>Rationalization</strong> (<code>rationalization-0..4</code>)</td>
+                  <td class="num">5</td>
+                  <td class="num">1.0000</td>
+                  <td class="num">0</td>
+                  <td class="num">0.000</td>
+                  <td class="num">1.000</td>
+                </tr>
+                <tr>
+                  <td><strong>Oscillation</strong> (<code>oscillation-0..4</code>)</td>
+                  <td class="num">5</td>
+                  <td class="num">1.0000</td>
+                  <td class="num">7</td>
+                  <td class="num">1.000</td>
+                  <td class="num">0.037</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. ONE TRAJECTORY, TWO CONDITIONS (CHART) -->
+    <section id="trajectory-chart" class="section section-alt">
+      <div class="container">
+        <span class="section-eyebrow">Section 2</span>
+        <h2>One trajectory, two conditions</h2>
+        <p class="section-intro">
+          Real denoising trajectories from <code>Dream-v0-Instruct-7B</code> on ARC-Challenge (64-item suites), sampled every 16 denoising steps from step <code>0</code> to step <code>255</code>:
+        </p>
+
+        <div class="card chart-card">
+          <div class="chart-legend-bar">
+            <div class="legend-item">
+              <span class="swatch swatch-reasoning"></span>
+              <span><strong>Reasoning condition (<code>Mercury_LBS10610</code>):</strong> step 0 <code>None</code>, 16 <code>None</code>, 32 <code>None</code>, 48 <code>A</code>, 64 <code>A</code>, 80 <code>C</code>, then <code>C</code> through step 255 (verdict sequence: <code>None</code>, <code>A</code>, <code>C</code>).</span>
+            </div>
+            <div class="legend-item">
+              <span class="swatch swatch-direct"></span>
+              <span><strong>Direct condition (<code>Mercury_7175875</code>):</strong> step 0 <code>None</code>, 16 <code>C</code>, then <code>C</code> through step 255 (verdict locks in immediately).</span>
+            </div>
+          </div>
+
+          <svg id="two-conditions-svg" viewBox="0 0 860 300" role="img" aria-label="Verdict over denoising steps 0 to 255 for ARC-C item Mercury_LBS10610 (reasoning) and Mercury_7175875 (direct), both Dream-v0-Instruct-7B"></svg>
+
+          <p class="chart-caption">
+            <strong>Caption:</strong> These are two different ARC-Challenge items (<code>Mercury_LBS10610</code> under the canonical reasoning prompt and <code>Mercury_7175875</code> under the direct answer-first prompt), shown to illustrate the trajectory pattern under each condition, not a paired comparison on the same item.
+          </p>
+
+          <div class="step-inspector">
+            <div class="inspector-controls">
+              <label for="sample-step-slider">
+                Inspect sampled denoising step: <strong id="sample-step-label">80</strong> / 255
+              </label>
+              <input type="range" id="sample-step-slider" min="0" max="16" step="1" value="5" />
+            </div>
+            <div class="inspector-split">
+              <div class="inspector-pane">
+                <div class="pane-head">
+                  <strong>Reasoning: <code>Mercury_LBS10610</code></strong>
+                  <span class="verdict-pill" id="reasoning-step-verdict">Verdict: C</span>
+                </div>
+                <pre class="canvas-preview" id="reasoning-step-text"></pre>
+              </div>
+              <div class="inspector-pane">
+                <div class="pane-head">
+                  <strong>Direct: <code>Mercury_7175875</code></strong>
+                  <span class="verdict-pill" id="direct-step-verdict">Verdict: C</span>
+                </div>
+                <pre class="canvas-preview" id="direct-step-text"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. RESULTS TABLE (64-ITEM SUITES ONLY) -->
+    <section id="results" class="section">
+      <div class="container">
+        <span class="section-eyebrow">Section 3</span>
+        <h2>Results (64-item suites only)</h2>
+        <p class="section-intro">
+          Exact verified measurements from <code>results/baselines.md</code> and the scored 64-item JSON artifacts on <code>master</code>. Five-item validation smoke runs are excluded from this table.
+        </p>
+
+        <div class="card table-card">
+          <div class="table-scroll">
+            <table class="data-table" id="results-64-table">
+              <thead>
+                <tr>
+                  <th>Checkpoint</th>
+                  <th>Task</th>
+                  <th>Condition</th>
+                  <th class="num">n</th>
+                  <th class="num">Accuracy</th>
+                  <th class="num">Coverage</th>
+                  <th class="num">Conditional Accuracy</th>
+                  <th class="num">Mean Convergence Step</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="results-64-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card note-card">
+          <p>
+            <strong>Opposite prompt effects across model families:</strong> On <code>Dream-v0-Instruct-7B</code>, direct beats reasoning on accuracy (<code>0.8906</code> vs <code>0.8281</code>). On <code>LLaDA-8B-Instruct</code>, reasoning beats direct (<code>0.9062</code> vs <code>0.875</code>), and on <code>LLaDA-1.5</code>, reasoning also beats direct (<code>0.9219</code> vs <code>0.875</code>). Both directions are reported as measured without smoothing over or explaining away the difference.
+          </p>
+        </div>
+
+        <div class="dream-rat-grid">
+          <div class="card">
+            <h3>Rationalization components (<code>Dream-v0-Instruct-7B</code> only, ARC-C 64-item)</h3>
+            <p class="sub-note">
+              Side-by-side decomposition from <code>results/dream_arcc_smoke64_direct_vs_reasoning.json</code>. Under the direct prompt, <code>early_factor</code> is high (<code>0.9852</code>) because the answer locks in at step 3.8 on average, but <code>post_change_rate</code> is <code>0.0001</code> and the multiplicative <code>gated</code> score is <code>0.0012</code> because almost no tokens change after the answer commits.
+            </p>
+            <div class="table-scroll">
+              <table class="data-table compact-table" id="dream-rat-table">
+                <thead>
+                  <tr>
+                    <th>Component</th>
+                    <th class="num">Direct (<code>direct_64</code>)</th>
+                    <th class="num">Reasoning (<code>reasoning_64</code>)</th>
+                  </tr>
+                </thead>
+                <tbody id="dream-rat-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3>Dream-v0-Instruct-7B component profile (Direct vs. Reasoning)</h3>
+            <p class="sub-note">
+              Visual comparison of the four rationalization decomposition metrics on the 64-item ARC-Challenge suites for <code>Dream-v0-Instruct-7B</code>.
+            </p>
+            <svg id="dream-rat-svg" viewBox="0 0 460 250" role="img" aria-label="Dream-v0-Instruct-7B ARC-C 64-item rationalization components side by side"></svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. METRICS -->
+    <section id="metrics" class="section section-alt">
+      <div class="container">
+        <span class="section-eyebrow">Section 4</span>
+        <h2>Metrics (definitions only)</h2>
+        <p class="section-intro">
+          Operational definitions implemented in <code>src/traj_eval/metrics.py</code>. See the full <a href="https://github.com/arrdel/traj-eval#metrics" target="_blank" rel="noopener">README metrics table</a> for ranges and edge-case rules.
+        </p>
+
+        <div class="metrics-grid">
+          <div class="card metric-def-card">
+            <h3>Verdict convergence step (<code>verdict_convergence_step</code>)</h3>
+            <p>
+              First denoising step <em>T</em><sub>stab</sub> after which the extracted prediction stays constant to the end of the trajectory. Under the null rule, <code>None</code> means no verdict was extracted at that step (not a verdict flip), and returns <code>None</code> if the final step has no extracted verdict.
+            </p>
+          </div>
+
+          <div class="card metric-def-card">
+            <h3>Flip rate and consistency (<code>flip_rate</code>, <code>step_consistency</code>)</h3>
+            <p>
+              <code>flip_rate</code> measures the fraction of adjacent decided step pairs where the extracted prediction changes (<code>0.0</code> = never changed, <code>1.0</code> = changed at every decided transition). <code>step_consistency</code> reports <code>1 - flip_rate</code> together with the longest stable run of identical predictions.
+            </p>
+          </div>
+
+          <div class="card metric-def-card">
+            <h3>Trajectory accuracy (<code>trajectory_accuracy</code>)</h3>
+            <p>
+              Fraction of trajectories where the final step prediction matches the gold answer, accompanied by <code>coverage</code> (fraction of trajectories with a non-null final prediction) and <code>conditional_accuracy</code> (accuracy among decided trajectories).
+            </p>
+          </div>
+
+          <div class="card metric-def-card">
+            <h3>Rationalization components (<code>rationalization_components</code>)</h3>
+            <p>
+              <strong>Heuristic (descriptive, not causal proof).</strong> Decomposes post-verdict text activity into <code>early_factor = 1 - conv_idx / n</code>, <code>post_change_rate</code> (fraction of post-convergence steps where reasoning text changes), <code>length_growth</code> (relative character growth after convergence), additive <code>score</code>, and multiplicative <code>gated_score</code>.
+            </p>
+          </div>
+
+          <div class="card metric-def-card">
+            <h3>Commitment clocks (<code>answer_commitment_step</code>, <code>stability_commitment_lag</code>, <code>unwritten_reasoning_at_convergence</code>)</h3>
+            <p>
+              Tracks <em>T</em><sub>commit</sub> (first step where the answer token span in the canvas stays unmasked through the final step), the stability lag <em>T</em><sub>commit</sub> &minus; <em>T</em><sub>stab</sub> in steps, and unwritten reasoning at convergence <code>1 - committed_reasoning_fraction</code> at <em>T</em><sub>stab</sub>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. INSTALL AND QUICKSTART -->
+    <section id="install" class="section">
+      <div class="container">
+        <span class="section-eyebrow">Section 5</span>
+        <h2>Install and quickstart</h2>
+        <p class="section-intro">
+          Requires Python 3.10 or newer and <code>numpy</code> only. No model weights, no <code>torch</code>, and no <code>transformers</code> are needed to install the package or run the demo.
+        </p>
+
+        <div class="install-grid">
+          <div class="card">
+            <h3>CLI quickstart</h3>
+            <pre class="code-block"><code>pip install -e .
+python -m traj_eval demo
+python -m traj_eval run --input examples/synthetic_demo.jsonl --output results.json</code></pre>
+          </div>
+
+          <div class="card">
+            <h3>Python API</h3>
+            <pre class="code-block"><code>from traj_eval.io import load_trajectories
+from traj_eval.metrics import evaluate_trajectories
+
+trajs = load_trajectories("examples/synthetic_demo.jsonl")
+results = evaluate_trajectories(trajs)
+print(results["aggregate"])</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. CAVEATS -->
+    <section id="caveats" class="section section-alt">
+      <div class="container">
+        <span class="section-eyebrow">Section 6</span>
+        <h2>Caveats</h2>
+        <div class="card caveats-card">
+          <ul class="caveats-list">
+            <li>
+              <strong>Descriptive, not causal proof:</strong> <code>traj-eval</code> measures when verdicts and rationale tokens appear and change along the denoising trajectory. It does not prove internal causal mechanisms.
+            </li>
+            <li>
+              <strong>Operational definition of rationalization:</strong> A high rationalization score means a trajectory looks like rationalization by this operational definition (early verdict stabilization followed by continued text edits or length growth), not that the model is proved to be rationalizing.
+            </li>
+            <li>
+              <strong>Five-item runs are pipeline checks only:</strong> Five-item smoke runs are used solely as pipeline and extraction sanity gates and are <strong>not</strong> included in the results table above.
+            </li>
+            <li>
+              <strong>Holdout checkpoint status:</strong> <code>MMaDA-8B-MixCoT</code> has not been run yet.
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 8. FOOTER -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-left">
+        <p><strong>Adele Chinda</strong> &middot; PhD Candidate in NLP, Department of Computer Science, Georgia State University</p>
+        <p class="footer-status">Paper status: in preparation (target ICLR/ICML 2027).</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://arrdel.github.io/portfolio" target="_blank" rel="noopener">Portfolio</a>
+        <a href="https://scholar.google.com/scholar?q=Adele+Chinda" target="_blank" rel="noopener">Google Scholar</a>
+        <a href="https://x.com/arrd_el" target="_blank" rel="noopener">X (@arrd_el)</a>
+        <a href="https://www.linkedin.com/in/adele-chinda" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://github.com/arrdel/traj-eval" target="_blank" rel="noopener">GitHub Repo</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- EMBEDDED VERIFIED DATA (NO BUILD STEP REQUIRED) -->
+  <script id="page-data" type="application/json">
+{
+  "trajectory_comparison": {
+    "sampled_steps": [0, 16, 32, 48, 64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240, 255],
+    "reasoning": {
+      "id": "Mercury_LBS10610",
+      "model": "Dream-v0-Instruct-7B",
+      "condition": "reasoning",
+      "gold_answer": "C",
+      "source_file": "results/dream_arcc_smoke64_reasoning.jsonl",
+      "verdicts": [null, null, null, "A", "A", "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "C"],
+      "texts": [
+        "[all 256 canvas tokens masked]",
+        "1. Identify the given information: The morning temperature is 41°F,",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the:,",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3.",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. the most likely temperature: Given the forecast, the most likely temperature would be higher",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F",
+        "1. Identify the given information: The morning temperature is 41°F, and a sunny, mild day is forecast.\n2. Consider the forecast: A sunny, mild day suggests that the temperature will likely increase.\n3. Determine the most likely temperature: Given the forecast, the most likely temperature would be higher than the morning temperature.\n\nAnswer: C. 78° F"
+      ]
+    },
+    "direct": {
+      "id": "Mercury_7175875",
+      "model": "Dream-v0-Instruct-7B",
+      "condition": "direct",
+      "gold_answer": "C",
+      "source_file": "results/dream_arcc_smoke64_direct.jsonl",
+      "verdicts": [null, "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "C", "C"],
+      "texts": [
+        "[all 256 canvas tokens masked]",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C",
+        "Answer: C"
+      ]
+    }
+  },
+  "results_64": [
+    {
+      "suite_id": "dream_arcc_smoke64_direct",
+      "model": "Dream-v0-Instruct-7B",
+      "task": "ARC-C",
+      "condition": "direct",
+      "n": 64,
+      "accuracy": 0.8906,
+      "coverage": 1.0,
+      "conditional_accuracy": 0.8906,
+      "mean_convergence_step": 3.8,
+      "note": "64 of 64 decided",
+      "source_file": "results/dream_arcc_smoke64_direct_results.json"
+    },
+    {
+      "suite_id": "dream_arcc_smoke64_reasoning",
+      "model": "Dream-v0-Instruct-7B",
+      "task": "ARC-C",
+      "condition": "reasoning",
+      "n": 64,
+      "accuracy": 0.8281,
+      "coverage": 0.9844,
+      "conditional_accuracy": 0.8413,
+      "mean_convergence_step": 189.5,
+      "note": "One undecided (Mercury_412681, truncated during option analysis)",
+      "source_file": "results/dream_arcc_smoke64_reasoning_results.json"
+    },
+    {
+      "suite_id": "llada_instruct_arcc_smoke64_direct",
+      "model": "LLaDA-8B-Instruct",
+      "task": "ARC-C",
+      "condition": "direct",
+      "n": 64,
+      "accuracy": 0.875,
+      "coverage": 1.0,
+      "conditional_accuracy": 0.875,
+      "mean_convergence_step": 4.5,
+      "note": "64 of 64 decided",
+      "source_file": "results/llada_instruct_arcc_smoke64_direct_results.json"
+    },
+    {
+      "suite_id": "llada_instruct_arcc_smoke64_reasoning",
+      "model": "LLaDA-8B-Instruct",
+      "task": "ARC-C",
+      "condition": "reasoning",
+      "n": 64,
+      "accuracy": 0.9062,
+      "coverage": 1.0,
+      "conditional_accuracy": 0.9062,
+      "mean_convergence_step": 32.1,
+      "note": "64 of 64 decided",
+      "source_file": "results/llada_instruct_arcc_smoke64_reasoning_results.json"
+    },
+    {
+      "suite_id": "llada_15_arcc_smoke64_direct",
+      "model": "LLaDA-1.5",
+      "task": "ARC-C",
+      "condition": "direct",
+      "n": 64,
+      "accuracy": 0.875,
+      "coverage": 1.0,
+      "conditional_accuracy": 0.875,
+      "mean_convergence_step": 7.4,
+      "note": "64 of 64 decided",
+      "source_file": "results/llada_15_arcc_smoke64_direct_results.json"
+    },
+    {
+      "suite_id": "llada_15_arcc_smoke64_reasoning",
+      "model": "LLaDA-1.5",
+      "task": "ARC-C",
+      "condition": "reasoning",
+      "n": 64,
+      "accuracy": 0.9219,
+      "coverage": 1.0,
+      "conditional_accuracy": 0.9219,
+      "mean_convergence_step": 21.7,
+      "note": "64 of 64 decided",
+      "source_file": "results/llada_15_arcc_smoke64_reasoning_results.json"
+    },
+    {
+      "suite_id": "dream_gsm8k_smoke64",
+      "model": "Dream-v0-Instruct-7B",
+      "task": "GSM8K",
+      "condition": "numeric",
+      "n": 64,
+      "accuracy": 0.7656,
+      "coverage": 0.9688,
+      "conditional_accuracy": 0.7903,
+      "mean_convergence_step": 161.3,
+      "note": "62 of 64 decided",
+      "source_file": "results/dream_gsm8k_smoke64_results.json"
+    },
+    {
+      "suite_id": "llada_instruct_gsm8k_smoke64",
+      "model": "LLaDA-8B-Instruct",
+      "task": "GSM8K",
+      "condition": "numeric",
+      "n": 64,
+      "accuracy": 0.6562,
+      "coverage": 1.0,
+      "conditional_accuracy": 0.6562,
+      "mean_convergence_step": 78.3,
+      "note": "64 of 64 decided",
+      "source_file": "results/llada_instruct_gsm8k_smoke64_results.json"
+    },
+    {
+      "suite_id": "llada_15_gsm8k_smoke64",
+      "model": "LLaDA-1.5",
+      "task": "GSM8K",
+      "condition": "numeric",
+      "n": 64,
+      "accuracy": 0.6094,
+      "coverage": 1.0,
+      "conditional_accuracy": 0.6094,
+      "mean_convergence_step": 72.2,
+      "note": "64 of 64 decided",
+      "source_file": "results/llada_15_gsm8k_smoke64_results.json"
+    }
+  ],
+  "dream_rationalization_side_by_side": {
+    "source_file": "results/dream_arcc_smoke64_direct_vs_reasoning.json",
+    "components": [
+      {
+        "key": "early_factor",
+        "label": "early_factor",
+        "direct": 0.9852,
+        "reasoning": 0.2559
+      },
+      {
+        "key": "post_change_rate",
+        "label": "post_change_rate",
+        "direct": 0.0001,
+        "reasoning": 0.1597
+      },
+      {
+        "key": "length_growth",
+        "label": "length_growth",
+        "direct": 0.0035,
+        "reasoning": 0.0203
+      },
+      {
+        "key": "gated",
+        "label": "gated",
+        "direct": 0.0012,
+        "reasoning": 0.0125
+      }
+    ]
+  }
+}
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
