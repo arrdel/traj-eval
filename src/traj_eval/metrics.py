@@ -420,21 +420,54 @@ def three_clock_disagreement(
     }
 
 
-def is_sbw_lockin(traj: Trajectory, threshold: float = 0.2) -> bool | None:
-    """Detect Stable-But-Wrong (SBW) early lock-in (Zhao et al., LOCKR 2026).
+def is_sbw_lockin(traj: Trajectory, threshold: float | None = None) -> bool | None:
+    """Detect Stable-But-Wrong (SBW) early lock-in (Zhao, Yu, & Zhao, LOCKR 2026).
 
-    Returns ``None`` when correctness is unknown (empty trajectory, unknown
-    gold, or undecided final prediction). Otherwise returns ``True`` iff the
-    verdict converges within the first ``threshold`` fraction of steps (default
-    20%) and the final prediction is incorrect (``traj.is_correct is False``).
+    Source definition (arXiv:2609.27220v2, Section 3.1--3.2, p. 3):
+    Given ``T`` recorded denoising steps ``t in {0, ..., T - 1}`` with extracted
+    normalized answers ``a_t = E(x^{(t)})`` (``None`` when no valid answer can yet
+    be extracted), early lock-in is evaluated at the midpoint checkpoint
+    ``c = round(0.5 * (T - 1))`` using a lock-in window of length
+    ``w = max(1, ceil((c + 1) / 2))``, corresponding to the most recent half of
+    the answer states observed up to ``c`` (indices ``c - w + 1 .. c``):
+
+        a_{c - w + 1} = a_{c - w + 2} = ... = a_c = ell != None
+
+    Let ``g`` denote the gold answer and ``J(ell, g) in {0, 1}`` correctness.
+    An early-locked trajectory is an early-wrong (SBW) lock-in iff ``ell != g``
+    (``J(ell, g) = 0``). As Section 3.1 specifies, the label is determined at the
+    intermediate checkpoint ``c`` and does not require the answer to remain
+    unchanged throughout the remaining denoising steps.
+
+    If ``threshold`` is explicitly provided (e.g., ``threshold=0.2``), evaluates
+    the prefix-convergence variant where the trajectory's final answer converges
+    within the first ``threshold`` fraction of steps and ``traj.is_correct is False``.
+    Returns ``None`` when ``traj.steps`` is empty, ``traj.gold_answer == ""``, or
+    no verdict is ever extracted.
     """
-    if not traj.steps or traj.is_correct is None:
+    if not traj.steps or traj.gold_answer == "":
         return None
-    idx = _convergence_index(traj)
-    if idx is None:
-        return None
-    conv_frac = idx / len(traj.steps)
-    return bool(conv_frac <= threshold and (traj.is_correct is False))
+    if threshold is not None:
+        if traj.is_correct is None:
+            return None
+        idx = _convergence_index(traj)
+        if idx is None:
+            return None
+        conv_frac = idx / len(traj.steps)
+        return bool(conv_frac <= threshold and (traj.is_correct is False))
+
+    n = len(traj.steps)
+    c = int(math.floor(0.5 * (n - 1) + 0.5))
+    w = max(1, math.ceil((c + 1) / 2))
+    window_preds = [traj.steps[i].prediction for i in range(c - w + 1, c + 1)]
+    if any(p is None for p in window_preds):
+        if traj.final_prediction is None:
+            return None
+        return False
+    if len(set(window_preds)) != 1:
+        return False
+    locked_answer = window_preds[0]
+    return bool(locked_answer != traj.gold_answer)
 
 
 def coverage_accuracy_decomposition(
@@ -488,10 +521,15 @@ def cotsel_selection_gap(
 ) -> dict[str, float | None]:
     """Compute CoTsel correctness-conditioning selection gap (Pan & Pan 2026).
 
-    Implements the exact identity ``Delta = E[A | C=1] - E[A] = Cov(A, C) / P(C=1)``
-    from arXiv:2610.37070 over trajectories with known gold (``t.steps`` non-empty
-    and ``t.gold_answer != ""``), where ``C = 1[t.is_correct is True]`` and
-    ``A = metric_fn(t)``.
+    Source definition (arXiv:2610.37070v1, Section 3.2, Definition 2 Eq. 11--13
+    and Proposition 1 Eq. 14--16):
+    For binary answer correctness ``C = 1[t.is_correct is True]`` and trajectory
+    property ``A = metric_fn(t)`` over trajectories with known gold:
+    * Population mean (Eq. 11): ``F_pop = E[A]``
+    * Selected-trace mean (Eq. 12, 15): ``F_sel = E[A | C = 1] = E[A * C] / P(C = 1)``
+    * Selection gap (Eq. 13, 14, 16):
+      ``Delta := F_sel - F_pop = (E[A * C] - E[A] * E[C]) / E[C] = Cov(A, C) / P(C = 1)``
+      where ``Cov(A, C) = (1 / N) * sum_i (A_i - E[A]) * (C_i - E[C])``.
     """
     pairs: list[tuple[float, int]] = []
     for t in trajectories:
@@ -662,7 +700,7 @@ def paired_bootstrap_delta(
 
 
 def _unbiased_pass_at_k(n: int, c: int, k: int) -> float:
-    """Unbiased estimator ``1 - comb(n - c, k) / comb(n, k)`` (Chen et al., 2021)."""
+    """Unbiased estimator ``1 - comb(n - c, k) / comb(n, k)`` (Chen et al., 2021; Ni et al., 2026)."""
     if n < k or k <= 0:
         return 0.0
     if n - c < k:
@@ -676,10 +714,15 @@ def pass_at_k_metrics(
 ) -> dict[str, Any]:
     """Compute Pass@k scaling and diversity metrics across multiple rollouts per prompt.
 
-    Diagnoses the Flexibility Trap (Ni et al. 2026, arXiv:2601.15165;
-    Fork-dLLM 2026, arXiv:2609.39859) where confidence-based diffusion decoding
-    collapses solution diversity. Trajectories are grouped by ``t.prompt`` (or
-    by base ID prefix before ``"::"`` / ``"#rollout"`` when prompts are identical).
+    Source definitions:
+    * Unbiased ``Pass@k`` estimator (Chen et al. 2021; Ni et al. 2026, *The
+      Flexibility Trap*, arXiv:2601.15165, Section 2.1): given ``n`` rollouts for
+      a prompt with ``c`` correct answers, ``Pass@k = 1 - comb(n - c, k) / comb(n, k)``.
+    * Unique-answer ratio (Yu et al. 2026, *StepRS-GRPO*, arXiv:2610.00661v3,
+      Section 4; Frkovic et al. 2026, *Fork-dLLM*, arXiv:2609.39859v1):
+      ``|{unique non-null final predictions}| / |{non-null final predictions}|``.
+    Trajectories are grouped by ``t.prompt`` (or by base ID prefix before ``"::"``
+    / ``"#rollout"`` when prompts are empty).
     """
     groups: dict[str, list[Trajectory]] = {}
     for t in trajectories:
