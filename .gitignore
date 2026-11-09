@@ -15,4 +15,3 @@ results.json
 .gpu_queue.pid
 .gpu_queue_daemon.log
 results/gpu_queue_state.json
-site/data/
