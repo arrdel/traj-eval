@@ -55,7 +55,7 @@
       line.setAttribute("x2", String(W - padR));
       line.setAttribute("y1", String(y));
       line.setAttribute("y2", String(y));
-      line.setAttribute("stroke", "#1f2b44");
+      line.setAttribute("stroke", "#cbd5e1");
       line.setAttribute("stroke-dasharray", row.key === "C" ? "none" : "4,4");
       svg.appendChild(line);
 
@@ -63,7 +63,8 @@
       txt.setAttribute("x", String(padL - 10));
       txt.setAttribute("y", String(y + 4));
       txt.setAttribute("text-anchor", "end");
-      txt.setAttribute("fill", row.key === "C" ? "#10b981" : "#9ca3af");
+      txt.setAttribute("fill", row.key === "C" ? "#047857" : "#475569");
+      txt.setAttribute("font-weight", row.key === "C" ? "600" : "400");
       txt.setAttribute("font-size", "11.5");
       txt.textContent = row.label;
       svg.appendChild(txt);
@@ -80,14 +81,14 @@
       tick.setAttribute("x2", String(x));
       tick.setAttribute("y1", String(padT + plotH));
       tick.setAttribute("y2", String(padT + plotH + 5));
-      tick.setAttribute("stroke", "#4b5563");
+      tick.setAttribute("stroke", "#94a3b8");
       svg.appendChild(tick);
 
       var lbl = document.createElementNS(ns, "text");
       lbl.setAttribute("x", String(x));
       lbl.setAttribute("y", String(H - 18));
       lbl.setAttribute("text-anchor", "middle");
-      lbl.setAttribute("fill", "#9ca3af");
+      lbl.setAttribute("fill", "#475569");
       lbl.setAttribute("font-size", "11");
       lbl.textContent = String(st);
       svg.appendChild(lbl);
@@ -97,7 +98,7 @@
     axisTitle.setAttribute("x", String(padL + plotW / 2));
     axisTitle.setAttribute("y", String(H - 3));
     axisTitle.setAttribute("text-anchor", "middle");
-    axisTitle.setAttribute("fill", "#9ca3af");
+    axisTitle.setAttribute("fill", "#475569");
     axisTitle.setAttribute("font-size", "11.5");
     axisTitle.textContent = "Denoising step (0 to 255, sampled every 16 steps)";
     svg.appendChild(axisTitle);
@@ -126,8 +127,8 @@
         c.setAttribute("cy", cy.toFixed(1));
         c.setAttribute("r", "4.8");
         c.setAttribute("fill", color);
-        c.setAttribute("stroke", "#0b0f19");
-        c.setAttribute("stroke-width", "1.4");
+        c.setAttribute("stroke", "#ffffff");
+        c.setAttribute("stroke-width", "1.5");
         c.style.cursor = "pointer";
         (function (idx) {
           c.addEventListener("click", function () {
@@ -150,8 +151,8 @@
       }
     }
 
-    drawSeries(dVerdicts, "#38bdf8", -4, "Direct (Mercury_7175875)");
-    drawSeries(rVerdicts, "#f59e0b", 4, "Reasoning (Mercury_LBS10610)");
+    drawSeries(dVerdicts, "#0284c7", -4, "Direct (Mercury_7175875)");
+    drawSeries(rVerdicts, "#ea580c", 4, "Reasoning (Mercury_LBS10610)");
   }
 
   function updateStepInspector(comp, sampleIndex) {
@@ -234,7 +235,7 @@
     var W = 460;
     var H = 250;
     var padL = 132;
-    var padR = 56;
+    var padR = 64;
     var padT = 26;
     var rowH = 48;
     var barMaxW = W - padL - padR;
@@ -246,7 +247,8 @@
       lbl.setAttribute("x", String(padL - 10));
       lbl.setAttribute("y", String(yBase + 18));
       lbl.setAttribute("text-anchor", "end");
-      lbl.setAttribute("fill", "#d1d5db");
+      lbl.setAttribute("fill", "#334155");
+      lbl.setAttribute("font-weight", "600");
       lbl.setAttribute("font-size", "11.5");
       lbl.textContent = c.label;
       svg.appendChild(lbl);
@@ -258,13 +260,13 @@
       rectD.setAttribute("width", wDirect.toFixed(1));
       rectD.setAttribute("height", "12");
       rectD.setAttribute("rx", "3");
-      rectD.setAttribute("fill", "#38bdf8");
+      rectD.setAttribute("fill", "#0284c7");
       svg.appendChild(rectD);
 
       var valD = document.createElementNS(ns, "text");
       valD.setAttribute("x", String(padL + wDirect + 6));
       valD.setAttribute("y", String(yBase + 12));
-      valD.setAttribute("fill", "#38bdf8");
+      valD.setAttribute("fill", "#0369a1");
       valD.setAttribute("font-size", "10.5");
       valD.textContent = "direct: " + Number(c.direct).toFixed(4);
       svg.appendChild(valD);
@@ -276,13 +278,13 @@
       rectR.setAttribute("width", wReason.toFixed(1));
       rectR.setAttribute("height", "12");
       rectR.setAttribute("rx", "3");
-      rectR.setAttribute("fill", "#f59e0b");
+      rectR.setAttribute("fill", "#ea580c");
       svg.appendChild(rectR);
 
       var valR = document.createElementNS(ns, "text");
       valR.setAttribute("x", String(padL + wReason + 6));
       valR.setAttribute("y", String(yBase + 28));
-      valR.setAttribute("fill", "#f59e0b");
+      valR.setAttribute("fill", "#c2410c");
       valR.setAttribute("font-size", "10.5");
       valR.textContent = "reasoning: " + Number(c.reasoning).toFixed(4);
       svg.appendChild(valR);
