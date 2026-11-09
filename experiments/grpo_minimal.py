@@ -227,16 +227,106 @@ def train_addition(
     }
 
 
+def step_rs_schedule(
+    u: np.ndarray | float,
+    *,
+    beta_max: float = 1.0,
+    gamma: float = 0.5,
+) -> np.ndarray:
+    """Linear state-dependent risk schedule from StepRS-GRPO (Yu et al. 2026, Eq. 3.6).
+
+    Source definition (arXiv:2610.00661v3, Section 3.2, Eq. 3.2 & 3.6):
+    Given local maskedness coordinate ``u in [0, 1]`` (fraction of masked tokens
+    in the active block, starting at ``u = 1`` when fully masked and decreasing
+    toward ``0`` as tokens are revealed):
+        b(u) = beta_min + (beta_max - beta_min) * u,   beta_min = gamma * beta_max
+    The paper's default linear half-decay schedule sets ``gamma = 1/2``.
+    """
+    u_arr = np.asarray(u, dtype=np.float64)
+    beta_min = gamma * beta_max
+    return beta_min + (beta_max - beta_min) * u_arr
+
+
+def step_rs_advantage_multiplier(
+    beta: np.ndarray | float,
+    solve_rate: float,
+) -> np.ndarray:
+    """Exact finite-group binary-reward multiplier ``c_beta(p)`` (Yu et al. 2026, Lemma 3.1 Eq. 3.7).
+
+    Source definition (arXiv:2610.00661v3, Section 3.3, Lemma 3.1 Eq. 3.7):
+    For binary rewards ``r_{qi} in {0, 1}`` with group solve rate
+    ``p_hat_q = (1 / G) * sum_{i=1}^G r_{qi}`` and centered advantage
+    ``A^0_{qi} = r_{qi} - p_hat_q``, the entropic risk-sensitive advantage
+    ``A_{qi}(beta) = (1 / beta) * (exp(beta * r_{qi}) / (G^{-1} sum_h exp(beta * r_{qh})) - 1)``
+    factors exactly as:
+        A_{qi}(beta) = c_beta(p_hat_q) * A^0_{qi}
+        c_beta(p) = (exp(beta) - 1) / (beta * (1 - p + p * exp(beta))),   c_0(p) = 1.
+    """
+    beta_arr = np.asarray(beta, dtype=np.float64)
+    p = float(solve_rate)
+    out = np.ones_like(beta_arr, dtype=np.float64)
+    nonzero = np.abs(beta_arr) > 1e-12
+    b_nz = beta_arr[nonzero]
+    eb = np.exp(b_nz)
+    out[nonzero] = (eb - 1.0) / (b_nz * (1.0 - p + p * eb))
+    return out
+
+
+def dtca_pos_weights(category_means: np.ndarray) -> np.ndarray:
+    """Bounded POS category contribution weights ``w_c in [0.8, 1.2]`` (Chen et al. 2026, Eq. 6).
+
+    Source definition (DTCA, arXiv:2610.35201v1, Section 3.1, Eq. 5--6):
+    Given category-level average confidence gains ``m_c = (1 / N_c) sum_{i: c_i = c} Delta P_i``:
+        w_c = 0.8 + 0.4 * (m_c - min_j m_j) / (max_j m_j - min_j m_j)
+    If all categories have identical mean contribution, returns ``1.0`` for each category.
+    """
+    m = np.asarray(category_means, dtype=np.float64)
+    if m.size == 0:
+        return np.zeros(0, dtype=np.float64)
+    m_min = float(m.min())
+    m_max = float(m.max())
+    if m_max - m_min <= 1e-12:
+        return np.ones_like(m, dtype=np.float64)
+    return 0.8 + 0.4 * (m - m_min) / (m_max - m_min)
+
+
+def dtca_timestep_score(
+    pos_weights: np.ndarray,
+    commit_confidences: np.ndarray,
+) -> float:
+    """Timestep importance score ``q_t = sum_{i in A_t} w_{c_i} * (1 - p_i)`` (Chen et al. 2026, Eq. 7)."""
+    w = np.asarray(pos_weights, dtype=np.float64)
+    p = np.asarray(commit_confidences, dtype=np.float64)
+    if w.size == 0:
+        return 0.0
+    return float(np.sum(w * (1.0 - p)))
+
+
+def dtca_token_credits(pos_weights: np.ndarray) -> np.ndarray:
+    """Normalized token credit weights ``a_{t,i}`` within a selected step (Chen et al. 2026, Eq. 8).
+
+    Source definition (DTCA, arXiv:2610.35201v1, Section 3.3, Eq. 8--9):
+        a_{t,i} = w_{c_i} / ((1 / |B_t|) * sum_{k in B_t} w_{c_k})
+    keeping the mean credit across ``B_t`` equal to ``1.0``.
+    """
+    w = np.asarray(pos_weights, dtype=np.float64)
+    if w.size == 0:
+        return np.zeros(0, dtype=np.float64)
+    mean_w = float(w.mean())
+    if mean_w <= 1e-12:
+        return np.ones_like(w, dtype=np.float64)
+    return w / mean_w
+
+
 def trajectory_step_weights(
     traj: Trajectory,
     scheme: str = "broadcast",
     *,
     fork_threshold: float = 0.6,
 ) -> np.ndarray:
-    """Compute per-step RL credit weights ``w_t`` along a denoising trajectory.
+    """Compute per-step RL credit weights ``w_t`` along a denoising trajectory (Paper 2 sandbox).
 
-    Implements the credit-assignment schemes compared in Paper 1 Section 6 and
-    the 2025--2026 dLLM RL literature:
+    Source definitions from the 2025--2026 dLLM RL literature:
 
     * ``"broadcast"``: ``w_t = 1.0`` for every step ``t`` (Zhao et al., d1 /
       diffu-GRPO, arXiv:2504.12216). Broadcasts outcome advantage uniformly to
@@ -246,16 +336,24 @@ def trajectory_step_weights(
     * ``"pre_commitment"``: ``w_t = 1.0`` for steps up to and including
       ``answer_commitment_step(traj)`` (or ``verdict_convergence_step`` when
       commitment is not logged) and ``0.0`` afterwards.
-    * ``"step_rs"``: linear half-decay from ``1.0`` at the first denoising step
-      to ``0.5`` at the final step, matching StepRS-GRPO (Yu et al. 2026,
-      arXiv:2610.00661).
-    * ``"fork_only"``: ``w_t = 1.0`` only at high-uncertainty fallback/fork
-      steps where ``step.confidence < fork_threshold`` (or before verdict
-      convergence when confidence is not logged), matching ForkGRPO (Frkovic
-      et al. 2026, arXiv:2609.39859).
-    * ``"dtca"``: weights proportional to positive step-to-step confidence
-      improvements ``max(0, c_{t+1} - c_t)`` plus an anchor at verdict
-      convergence, inspired by DTCA (Chen et al. 2026, arXiv:2610.35201).
+    * ``"step_rs"``: linear half-decay schedule ``b(u) = beta_min + (beta_max - beta_min) * u``
+      with ``beta_min = 0.5 * beta_max`` (``gamma = 0.5``, normalized to ``beta_max = 1.0``)
+      from ``1.0`` at the first denoising step (``u = 1.0``) to ``0.5`` at the
+      final step (``u = 0.0``), matching StepRS-GRPO (Yu et al. 2026,
+      arXiv:2610.00661v3, Section 3.2, Eq. 3.6).
+    * ``"fork_only"``: ``w_t = 1.0`` only at fallback steps
+      ``F_i = {t : max_{k in M_{i,t}} c^k_{i,t} <= lambda}`` where step confidence
+      is at or below ``fork_threshold`` (``step.confidence <= fork_threshold``, or
+      before verdict convergence when confidence is not logged), matching
+      ForkGRPO (Frkovic, Jazbec, & Naesseth 2026, arXiv:2609.39859v1,
+      Algorithm 2 & Section 3.2 Eq. 2).
+    * ``"dtca"``: trajectory-level reduction of Denoising Token Credit Assignment
+      (Chen et al. 2026, arXiv:2610.35201v1, Section 3.1 Eq. 3--4), weighting
+      steps by ReLU-clipped confidence gain ``Delta P_t = max(0, c_{t+1} - c_t)``
+      plus an anchor at verdict convergence. Token-level POS weight scaling
+      (Eq. 6), timestep selection score (Eq. 7), and normalized token credit
+      (Eq. 8) are provided by :func:`dtca_pos_weights`, :func:`dtca_timestep_score`,
+      and :func:`dtca_token_credits`.
     """
     steps = traj.steps
     n = len(steps)
@@ -286,13 +384,14 @@ def trajectory_step_weights(
     if scheme == "step_rs":
         if n == 1:
             return np.ones(1, dtype=np.float64)
-        return np.linspace(1.0, 0.5, n, dtype=np.float64)
+        u = np.linspace(1.0, 0.0, n, dtype=np.float64)
+        return step_rs_schedule(u, beta_max=1.0, gamma=0.5)
 
     if scheme == "fork_only":
         weights = np.zeros(n, dtype=np.float64)
         for i, s in enumerate(steps):
             if s.confidence is not None:
-                if s.confidence < fork_threshold:
+                if s.confidence <= fork_threshold:
                     weights[i] = 1.0
             elif conv_step is None or s.step <= conv_step:
                 weights[i] = 1.0
