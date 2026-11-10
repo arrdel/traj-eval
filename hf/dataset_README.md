@@ -17,6 +17,48 @@ tags:
 pretty_name: "traj-eval: Diffusion LM Denoising Trajectory Benchmarks"
 size_categories:
   - n<1K
+configs:
+  - config_name: per_trajectory_metrics
+    default: true
+    data_files:
+      - split: dream_arcc_direct_64
+        path: results/metrics/dream_arcc_smoke64_direct_metrics.jsonl
+      - split: dream_arcc_reasoning_64
+        path: results/metrics/dream_arcc_smoke64_reasoning_metrics.jsonl
+      - split: llada_instruct_arcc_direct_64
+        path: results/metrics/llada_instruct_arcc_smoke64_direct_metrics.jsonl
+      - split: llada_instruct_arcc_reasoning_64
+        path: results/metrics/llada_instruct_arcc_smoke64_reasoning_metrics.jsonl
+      - split: llada_15_arcc_direct_64
+        path: results/metrics/llada_15_arcc_smoke64_direct_metrics.jsonl
+      - split: llada_15_arcc_reasoning_64
+        path: results/metrics/llada_15_arcc_smoke64_reasoning_metrics.jsonl
+      - split: dream_gsm8k_64
+        path: results/metrics/dream_gsm8k_smoke64_metrics.jsonl
+      - split: llada_instruct_gsm8k_64
+        path: results/metrics/llada_instruct_gsm8k_smoke64_metrics.jsonl
+      - split: llada_15_gsm8k_64
+        path: results/metrics/llada_15_gsm8k_smoke64_metrics.jsonl
+  - config_name: trajectories
+    data_files:
+      - split: dream_arcc_direct_64
+        path: results/dream_arcc_smoke64_direct.jsonl
+      - split: dream_arcc_reasoning_64
+        path: results/dream_arcc_smoke64_reasoning.jsonl
+      - split: llada_instruct_arcc_direct_64
+        path: results/llada_instruct_arcc_smoke64_direct.jsonl
+      - split: llada_instruct_arcc_reasoning_64
+        path: results/llada_instruct_arcc_smoke64_reasoning.jsonl
+      - split: llada_15_arcc_direct_64
+        path: results/llada_15_arcc_smoke64_direct.jsonl
+      - split: llada_15_arcc_reasoning_64
+        path: results/llada_15_arcc_smoke64_reasoning.jsonl
+      - split: dream_gsm8k_64
+        path: results/dream_gsm8k_smoke64.jsonl
+      - split: llada_instruct_gsm8k_64
+        path: results/llada_instruct_gsm8k_smoke64.jsonl
+      - split: llada_15_gsm8k_64
+        path: results/llada_15_gsm8k_smoke64.jsonl
 ---
 
 # traj-eval: Step-by-Step Denoising Trajectory Benchmarks for Masked Diffusion Language Models
@@ -26,7 +68,8 @@ size_categories:
 **Paper status:** in preparation (target ICLR/ICML 2027)  
 **Code & Evaluation Toolkit:** [https://github.com/arrdel/traj-eval](https://github.com/arrdel/traj-eval)  
 **Project Page:** [https://arrdel.github.io/traj-eval/](https://arrdel.github.io/traj-eval/)  
-**Interactive Hugging Face Space:** [https://huggingface.co/spaces/arrdel/traj-eval](https://huggingface.co/spaces/arrdel/traj-eval)
+**Interactive Hugging Face Space:** [https://huggingface.co/spaces/arrdel/traj-eval](https://huggingface.co/spaces/arrdel/traj-eval)  
+**Hugging Face Collection:** [https://huggingface.co/collections/arrdel/traj-eval-diffusion-lm-reasoning-trajectories-6af321457d8dbd6074548379](https://huggingface.co/collections/arrdel/traj-eval-diffusion-lm-reasoning-trajectories-6af321457d8dbd6074548379)
 
 ## Overview
 
@@ -96,6 +139,30 @@ Side-by-side decomposition from `results/dream_arcc_smoke64_direct_vs_reasoning.
 | `post_change_rate` | `0.0001` | `0.1597` |
 | `length_growth` | `0.0035` | `0.0203` |
 | `gated` | `0.0012` | `0.0125` |
+
+## Loading with Hugging Face `datasets`
+
+This repository provides two structured configurations in the Hugging Face Dataset Viewer:
+1. `per_trajectory_metrics` (default): per-question scored trajectory metrics (`convergence_step`, `flip_rate`, `consistency`, `answer_commitment_step`, `stability_commitment_lag`, `unwritten_reasoning_at_convergence`, `order_gap`, etc.) across all 9 64-item splits.
+2. `trajectories`: full 256-step denoising trajectories (`steps[0..255]`) across all 9 64-item splits.
+
+```python
+from datasets import load_dataset
+
+# Load per-trajectory scored metrics for a 64-item split
+metrics_ds = load_dataset(
+    "arrdel/traj-eval-benchmarks",
+    name="per_trajectory_metrics",
+    split="dream_arcc_reasoning_64",
+)
+
+# Load full 256-step denoising trajectories for a 64-item split
+trajs_ds = load_dataset(
+    "arrdel/traj-eval-benchmarks",
+    name="trajectories",
+    split="dream_arcc_reasoning_64",
+)
+```
 
 ## Quickstart with `traj-eval`
 
