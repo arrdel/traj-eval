@@ -1,24 +1,26 @@
-"""Stage and publish the `traj-eval` Hugging Face Static Space and Dataset.
+"""Stage and publish the `traj-eval` Hugging Face Static Space, Dataset, and Collection.
 
 Supports:
 1. `--dry-run`: Stages both the Hugging Face Static Space folder (`space/`) and
-   the Hugging Face Dataset folder (`dataset/`) locally under `build/hf_staging/`
+   the Hugging Face Dataset folder (`dataset/`, including per-trajectory
+   metrics splits in `results/metrics/`) locally under `build/hf_staging/`
    with zero network calls so they can be inspected or tested offline.
-2. `--push`: Creates/updates the Hugging Face Space (`<namespace>/<space-name>`)
-   and Dataset (`<namespace>/<dataset-name>`) via `huggingface_hub` (`HfApi`) or
-   the `hf` CLI.
+2. `--push`: Creates/updates the Hugging Face Space (`<namespace>/<space-name>`),
+   Dataset (`<namespace>/<dataset-name>`), and Collection via `huggingface_hub`
+   (`HfApi`).
 
 Usage:
   # Stage locally without network calls
   python scripts/publish_hf.py --dry-run
 
-  # Authenticate and push both Space and Dataset to Hugging Face Hub
+  # Authenticate and push Space, Dataset, and Collection to Hugging Face Hub
   HF_TOKEN=hf_xxx python scripts/publish_hf.py --push
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -29,6 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 HF_DIR = REPO_ROOT / "hf"
 SITE_DIR = REPO_ROOT / "site"
 RESULTS_DIR = REPO_ROOT / "results"
+DEFAULT_HF_NAMESPACE = "arrdel"
 
 # Only the 9 verified 64-item benchmark suites and their paired comparisons/inputs
 # are published in the Hugging Face Dataset bundle. 5-item pipeline smoke runs are
@@ -43,12 +46,40 @@ DATASET_RESULT_GLOBS: tuple[str, ...] = (
     "baselines.md",
 )
 
+SUITES_64: tuple[tuple[str, str], ...] = (
+    ("dream_arcc_direct_64", "dream_arcc_smoke64_direct"),
+    ("dream_arcc_reasoning_64", "dream_arcc_smoke64_reasoning"),
+    ("llada_instruct_arcc_direct_64", "llada_instruct_arcc_smoke64_direct"),
+    ("llada_instruct_arcc_reasoning_64", "llada_instruct_arcc_smoke64_reasoning"),
+    ("llada_15_arcc_direct_64", "llada_15_arcc_smoke64_direct"),
+    ("llada_15_arcc_reasoning_64", "llada_15_arcc_smoke64_reasoning"),
+    ("dream_gsm8k_64", "dream_gsm8k_smoke64"),
+    ("llada_instruct_gsm8k_64", "llada_instruct_gsm8k_smoke64"),
+    ("llada_15_gsm8k_64", "llada_15_gsm8k_smoke64"),
+)
+
 SPACE_SITE_ASSETS: tuple[str, ...] = (
     "index.html",
     "styles.css",
     "app.js",
     "preview.png",
 )
+
+
+def resolve_hf_token(repo_root: Path = REPO_ROOT) -> str | None:
+    """Resolve `HF_TOKEN` from environment variables or a local `.env` file."""
+    for env_key in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"):
+        val = os.environ.get(env_key)
+        if val and val.strip():
+            return val.strip()
+
+    dotenv_path = repo_root / ".env"
+    if dotenv_path.exists():
+        text = dotenv_path.read_text(encoding="utf-8")
+        matches = [m for m in re.findall(r"hf_[A-Za-z0-9]{16,}", text)]
+        if matches:
+            return matches[-1]
+    return None
 
 
 def stage_hf_space_dir(
@@ -99,23 +130,77 @@ def stage_hf_dataset_dir(
                 continue
             shutil.copy2(src, out_results / src.name)
 
+    metrics_dir = out_results / "metrics"
+    metrics_dir.mkdir(parents=True, exist_ok=True)
+    for split_name, file_stem in SUITES_64:
+        res_json_path = results_dir / f"{file_stem}_results.json"
+        if not res_json_path.exists():
+            continue
+        res_data = json.loads(res_json_path.read_text(encoding="utf-8"))
+        per_traj = res_data.get("per_trajectory", [])
+        out_jsonl = metrics_dir / f"{file_stem}_metrics.jsonl"
+        is_dream = file_stem.startswith("dream_")
+        lines = []
+        for row in per_traj:
+            clean_row = {
+                "suite": split_name,
+                "id": str(row["id"]),
+                "final_prediction": row.get("final_prediction"),
+                "gold_answer": str(row.get("gold_answer", "")),
+                "correct": row.get("correct"),
+                "convergence_step": row.get("convergence_step"),
+                "convergence_index": row.get("convergence_index"),
+                "convergence_fraction": (
+                    float(row["convergence_fraction"])
+                    if row.get("convergence_fraction") is not None
+                    else None
+                ),
+                "flip_rate": float(row.get("flip_rate", 0.0)),
+                "consistency": float(row.get("consistency", 1.0)),
+                "longest_stable_run": int(row.get("longest_stable_run", 0)),
+                "answer_commitment_step": row.get("answer_commitment_step"),
+                "stability_commitment_lag": row.get("stability_commitment_lag"),
+                "unwritten_reasoning_at_convergence": (
+                    float(row["unwritten_reasoning_at_convergence"])
+                    if row.get("unwritten_reasoning_at_convergence") is not None
+                    else None
+                ),
+                "order_gap": (
+                    float(row["order_gap"])
+                    if row.get("order_gap") is not None
+                    else None
+                ),
+                "early_factor": (
+                    float(row["early_factor"])
+                    if (is_dream and row.get("early_factor") is not None)
+                    else None
+                ),
+                "post_change_rate": (
+                    float(row["post_change_rate"])
+                    if (is_dream and row.get("post_change_rate") is not None)
+                    else None
+                ),
+                "length_growth": (
+                    float(row["length_growth"])
+                    if (is_dream and row.get("length_growth") is not None)
+                    else None
+                ),
+                "rationalization_score": (
+                    float(row["rationalization_score"])
+                    if (is_dream and row.get("rationalization_score") is not None)
+                    else None
+                ),
+                "gated_rationalization_score": (
+                    float(row["gated_rationalization_score"])
+                    if (is_dream and row.get("gated_rationalization_score") is not None)
+                    else None
+                ),
+                "n_steps": int(row.get("n_steps", 256)),
+            }
+            lines.append(json.dumps(clean_row, ensure_ascii=False))
+        out_jsonl.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
     return staging_dir
-
-
-def resolve_hf_token(repo_root: Path = REPO_ROOT) -> str | None:
-    """Resolve `HF_TOKEN` from environment variables or a local `.env` file."""
-    for env_key in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"):
-        val = os.environ.get(env_key)
-        if val and val.strip():
-            return val.strip()
-
-    dotenv_path = repo_root / ".env"
-    if dotenv_path.exists():
-        text = dotenv_path.read_text(encoding="utf-8")
-        matches = [m for m in re.findall(r"hf_[A-Za-z0-9]{16,}", text)]
-        if matches:
-            return matches[-1]
-    return None
 
 
 def _find_hf_python() -> str | None:
@@ -189,8 +274,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--namespace",
-        default="arrdel",
-        help="Hugging Face username or organization (default: arrdel)",
+        default=DEFAULT_HF_NAMESPACE,
+        help=f"Hugging Face username or organization (default: {DEFAULT_HF_NAMESPACE})",
     )
     parser.add_argument(
         "--space-name",
