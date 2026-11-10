@@ -14,6 +14,8 @@
         <span class="brand-badge">traj-eval</span>
         <span class="brand-sub">Diffusion LM Trajectory Evaluation</span>
       </a>
+      <input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation menu" />
+      <label for="nav-toggle" class="nav-toggle-btn">&#9776; Menu</label>
       <nav class="topnav" aria-label="Section navigation">
         <a href="#why-accuracy-lies">Why Accuracy Lies</a>
         <a href="#trajectory-chart">Trajectory Chart</a>
@@ -97,7 +99,7 @@
             </p>
           </div>
           <div class="table-scroll">
-            <table class="data-table compact-table">
+            <table class="data-table compact-table" id="synthetic-table">
               <thead>
                 <tr>
                   <th>Archetype (Synthetic v0.1)</th>
@@ -256,7 +258,7 @@
             <p class="sub-note">
               Visual comparison of the four rationalization decomposition metrics on the 64-item ARC-Challenge suites for <code>Dream-v0-Instruct-7B</code>.
             </p>
-            <svg id="dream-rat-svg" viewBox="0 0 460 250" role="img" aria-label="Dream-v0-Instruct-7B ARC-C 64-item rationalization components side by side"></svg>
+            <svg id="dream-rat-svg" viewBox="0 0 515 250" role="img" aria-label="Dream-v0-Instruct-7B ARC-C 64-item rationalization components side by side"></svg>
           </div>
         </div>
       </div>
