@@ -569,6 +569,23 @@ def stratified_evaluation(trajectories: Sequence[Trajectory]) -> dict[str, Any]:
     how convergence, flip rate, rationalization, and disagreement differ
     between correct and erroneous trajectories.
     """
+    all_list = list(trajectories)
+    # Precompute per-trajectory metrics once across all_list to avoid 3x redundant recomputation.
+    cached: dict[int, dict[str, float | None]] = {}
+    for t in all_list:
+        fr = flip_rate(t)
+        rat_c = rationalization_components(t)
+        idx = _convergence_index(t) if t.steps else None
+        cfrac = (idx / len(t.steps)) if (t.steps and idx is not None) else None
+        disag = 1.0 if three_clock_disagreement(t)["in_disagreement_slice"] else 0.0
+        cached[id(t)] = {
+            "fr": fr,
+            "rat": rat_c["score"],
+            "grat": rat_c["gated_score"],
+            "cfrac": cfrac,
+            "disag": disag,
+        }
+
     def _slice_summary(subset: list[Trajectory]) -> dict[str, Any]:
         if not subset:
             return {
@@ -579,18 +596,15 @@ def stratified_evaluation(trajectories: Sequence[Trajectory]) -> dict[str, Any]:
                 "mean_convergence_fraction": 0.0,
                 "disagreement_rate": 0.0,
             }
-        frs = [flip_rate(t) for t in subset]
-        rats = [rationalization_score(t) for t in subset]
-        grats = [gated_rationalization_score(t) for t in subset]
+        frs = [float(cached[id(t)]["fr"]) for t in subset]  # type: ignore[arg-type]
+        rats = [float(cached[id(t)]["rat"]) for t in subset]  # type: ignore[arg-type]
+        grats = [float(cached[id(t)]["grat"]) for t in subset]  # type: ignore[arg-type]
         cfracs = [
-            idx / len(t.steps)
+            float(cf)
             for t in subset
-            if t.steps and (idx := _convergence_index(t)) is not None
+            if (cf := cached[id(t)]["cfrac"]) is not None
         ]
-        disag = [
-            1.0 if three_clock_disagreement(t)["in_disagreement_slice"] else 0.0
-            for t in subset
-        ]
+        disag = [float(cached[id(t)]["disag"]) for t in subset]  # type: ignore[arg-type]
         return {
             "n": len(subset),
             "mean_flip_rate": round(float(statistics.mean(frs)), 4),
@@ -600,7 +614,6 @@ def stratified_evaluation(trajectories: Sequence[Trajectory]) -> dict[str, Any]:
             "disagreement_rate": round(float(statistics.mean(disag)), 4),
         }
 
-    all_list = list(trajectories)
     correct_list = [t for t in all_list if t.is_correct is True]
     incorrect_list = [t for t in all_list if t.is_correct is False]
     undecided_list = [t for t in all_list if t.steps and t.final_prediction is None]
@@ -611,9 +624,15 @@ def stratified_evaluation(trajectories: Sequence[Trajectory]) -> dict[str, Any]:
         "incorrect": _slice_summary(incorrect_list),
         "undecided": _slice_summary(undecided_list),
         "cotsel_gaps": {
-            "rationalization_score": cotsel_selection_gap(all_list, rationalization_score),
-            "gated_rationalization_score": cotsel_selection_gap(all_list, gated_rationalization_score),
-            "flip_rate": cotsel_selection_gap(all_list, flip_rate),
+            "rationalization_score": cotsel_selection_gap(
+                all_list, lambda t: float(cached[id(t)]["rat"])  # type: ignore[arg-type]
+            ),
+            "gated_rationalization_score": cotsel_selection_gap(
+                all_list, lambda t: float(cached[id(t)]["grat"])  # type: ignore[arg-type]
+            ),
+            "flip_rate": cotsel_selection_gap(
+                all_list, lambda t: float(cached[id(t)]["fr"])  # type: ignore[arg-type]
+            ),
         },
     }
 
@@ -652,13 +671,20 @@ def paired_bootstrap_delta(
             return (idx / len(t.steps)) if idx is not None else None
         raise ValueError(f"Unsupported metric for paired_bootstrap_delta: {metric!r}")
 
-    base_map = {t.id: _per_item(t) for t in base_trajectories}
-    target_map = {t.id: _per_item(t) for t in target_trajectories}
-    shared_ids = [
+    base_list = list(base_trajectories)
+    target_list = list(target_trajectories)
+    if len({t.id for t in base_list}) != len(base_list):
+        raise ValueError("Duplicate trajectory IDs in base_trajectories")
+    if len({t.id for t in target_list}) != len(target_list):
+        raise ValueError("Duplicate trajectory IDs in target_trajectories")
+
+    base_map = {t.id: _per_item(t) for t in base_list}
+    target_map = {t.id: _per_item(t) for t in target_list}
+    shared_ids = sorted(
         tid
         for tid in base_map
         if tid in target_map and base_map[tid] is not None and target_map[tid] is not None
-    ]
+    )
     n_paired = len(shared_ids)
     if n_paired == 0:
         return {
@@ -679,14 +705,15 @@ def paired_bootstrap_delta(
     obs_delta = obs_target - obs_base
 
     rng = random.Random(seed)
+    n_b = max(1, n_boot)
     boot_deltas: list[float] = []
-    for _ in range(max(1, n_boot)):
+    for _ in range(n_b):
         sample_diffs = [diffs[rng.randrange(n_paired)] for _ in range(n_paired)]
         boot_deltas.append(sum(sample_diffs) / n_paired)
     boot_deltas.sort()
-    alpha = (1.0 - ci) / 2.0
-    lo_idx = min(len(boot_deltas) - 1, max(0, int(math.floor(alpha * len(boot_deltas)))))
-    hi_idx = min(len(boot_deltas) - 1, max(0, int(math.ceil((1.0 - alpha) * len(boot_deltas)) - 1)))
+    alpha = round((1.0 - ci) / 2.0, 12)
+    lo_idx = min(n_b - 1, max(0, int(math.floor(round(alpha * n_b, 9)))))
+    hi_idx = min(n_b - 1, max(0, (n_b - 1) - lo_idx))
     return {
         "metric": metric,
         "n_paired": n_paired,

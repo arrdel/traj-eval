@@ -275,6 +275,21 @@ def run_llada_smoke(
     import subprocess
 
     cfg = config or LLaDASmokeConfig()
+    if cfg.steps <= 0:
+        raise ValueError(f"LLaDASmokeConfig.steps must be > 0, got {cfg.steps}")
+    if cfg.gen_length <= 0:
+        raise ValueError(f"LLaDASmokeConfig.gen_length must be > 0, got {cfg.gen_length}")
+    if cfg.block_length <= 0:
+        raise ValueError(
+            f"LLaDASmokeConfig.block_length must be > 0, got {cfg.block_length}"
+        )
+    for idx, it in enumerate(items):
+        if not isinstance(it, dict):
+            raise ValueError(f"Item {idx} is not a dict: {it!r}")
+        for req_key in ("id", "prompt", "gold_answer"):
+            if req_key not in it:
+                raise ValueError(f"Item {idx} missing required key {req_key!r}: {it!r}")
+
     if model is None or tokenizer is None:
         import torch  # noqa: PLC0415
         from transformers import AutoModel, AutoTokenizer  # noqa: PLC0415
