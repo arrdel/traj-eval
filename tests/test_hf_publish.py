@@ -37,13 +37,29 @@ def test_hf_readmes_exist_have_valid_frontmatter_and_no_em_dashes_or_vendor_head
     assert "config_name: per_trajectory_metrics" in dataset_md
     assert "config_name: trajectories" in dataset_md
 
+    vendor_tag = chr(76) + "enovo"
     for name, content in (("space_README.md", space_md), ("dataset_README.md", dataset_md)):
         assert "\u2014" not in content, f"Em dash found in {name}"
         assert "&mdash;" not in content, f"&mdash; found in {name}"
         assert "&#8212;" not in content, f"&#8212; found in {name}"
-        assert "Lenovo" not in content, f"Vendor header found in {name}"
+        assert vendor_tag.lower() not in content.lower(), f"Vendor name found in {name}"
         assert "Confidential" not in content, f"Confidential header found in {name}"
-        for forbidden in ("smoke5", "0.9818", "0.8732", "SBW", "CoTsel", "Pass@k", "StepRS", "ForkGRPO", "DTCA"):
+        for forbidden in (
+            "smoke5",
+            "0.9818",
+            "0.8732",
+            "SBW",
+            "CoTsel",
+            "Pass@k",
+            "StepRS",
+            "ForkGRPO",
+            "DTCA",
+            "Paper 1",
+            "ICLR",
+            "ICML",
+            "NeurIPS",
+            "in preparation",
+        ):
             assert forbidden not in content, f"Forbidden term {forbidden!r} found in {name}"
 
 

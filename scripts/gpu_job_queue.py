@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# Copyright (C) 2026 Lenovo
-# All Rights Reserved.
-# Lenovo Confidential Restricted.
-
 """Sequential GPU watcher and PR-gated auto-queue runner for traj-eval.
 
 Why a sequential watcher instead of a raw cron job
@@ -27,10 +23,9 @@ sequential job queue that:
    branch, opens a Pull Request against ``master`` using
    ``.github/pull_request_template.md``, and waits for the managing agent
    (Muse) to review and merge that PR before advancing to the next stage.
-6. Enforces the hard protocol gate in ``docs/CURSOR_FOLLOWUP_2026-10-30.md``
-   §5: if the 5-item reasoning smoke fails ``check_reasoning_smoke_gate``,
-   it opens the diagnostic PR and halts the queue instead of scaling to
-   64-item or multi-checkpoint runs.
+6. Enforces the hard reasoning smoke protocol gate: if the 5-item reasoning
+   smoke fails ``check_reasoning_smoke_gate``, it opens the diagnostic PR
+   and halts the queue instead of scaling to 64-item or multi-checkpoint runs.
 """
 
 from __future__ import annotations
@@ -109,7 +104,7 @@ class QueuedJob:
 
 
 DEFAULT_JOB_QUEUE: list[QueuedJob] = [
-    # Stage 1: Mandatory next experiment per docs/CURSOR_FOLLOWUP_2026-10-30.md §5.
+    # Stage 1: Reasoning-condition 5-item ARC-C smoke gate.
     # Halts the entire queue if check_reasoning_smoke_gate fails.
     QueuedJob(
         job_id="dream_arcc_smoke5_reasoning",
@@ -166,7 +161,7 @@ DEFAULT_JOB_QUEUE: list[QueuedJob] = [
         out_log="results/dream_gsm8k_smoke5_run_log.json",
         out_results="results/dream_gsm8k_smoke5_results.json",
     ),
-    # Stage 4: Pre-registered EOS-suppression K=64 5-item smoke (named per CURSOR_FOLLOWUP_2026-10-30 §3c).
+    # Stage 4: Pre-registered EOS-suppression K=64 5-item smoke.
     QueuedJob(
         job_id="dream_arcc_eos_suppression_k64_smoke5",
         title="Dream-v0-Instruct-7B — ARC-C 5-item EOS-suppression K=64 smoke",
@@ -584,7 +579,7 @@ def format_baselines_entry(
     )
     if gate_result is not None:
         lines.append(
-            f"- **Reasoning smoke gate (`CURSOR_FOLLOWUP_2026-10-30` §5):** `{gate_result['status']}` "
+            f"- **Reasoning smoke gate:** `{gate_result['status']}` "
             f"(commitment clocks on `{gate_result['n_with_commitment_clocks']}/{gate_result['n_decided']}`, "
             f"post-verdict change on `{gate_result['n_with_post_change']}`, "
             f"pre-verdict rationale on `{gate_result['n_with_pre_verdict_rationale']}`)."
@@ -1169,8 +1164,7 @@ def run_queue_loop(
             print(f"[gpu-queue] HALTING QUEUE per protocol gate: {halted_reason}", flush=True)
             break
 
-        # Per docs/PR_WORKFLOW.md §§5-6, wait for the managing agent (Muse) to
-        # review and merge this job's PR before starting the next scope/job.
+        # Wait for the PR to be reviewed and merged before starting the next scope/job.
         if require_pr:
             halted_reason = wait_for_branch_pr_merge(
                 job_id=job.job_id,

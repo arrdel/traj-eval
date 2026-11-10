@@ -62,7 +62,6 @@ SPACE_SITE_ASSETS: tuple[str, ...] = (
     "index.html",
     "styles.css",
     "app.js",
-    "preview.png",
 )
 
 

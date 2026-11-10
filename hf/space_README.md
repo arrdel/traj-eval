@@ -23,7 +23,7 @@ tags:
 
 # traj-eval: Measure reasoning in the denoising trajectory, not just final-answer accuracy
 
-Static Hugging Face Space for `traj-eval` (Paper 1 companion, in preparation, target ICLR/ICML 2027).
+Static Hugging Face Space for `traj-eval`, an open-source toolkit and benchmark suite for evaluating denoising trajectories in masked diffusion language models.
 
 Two models can have identical final-answer accuracy for very different reasons: genuine reasoning, rationalization, and oscillation. Final-step evaluation collapses the entire denoising process into a single endpoint prediction, hiding when a verdict stabilized and how the intermediate rationale developed. `traj-eval` instruments and scores the full step-by-step denoising trajectory so these reasoning regimes can be distinguished.
 
@@ -41,4 +41,3 @@ Two models can have identical final-answer accuracy for very different reasons: 
 - **Companion Benchmark Dataset:** [https://huggingface.co/datasets/arrdel/traj-eval-benchmarks](https://huggingface.co/datasets/arrdel/traj-eval-benchmarks)
 - **Hugging Face Collection:** [https://huggingface.co/collections/arrdel/traj-eval-diffusion-lm-reasoning-trajectories-6af321457d8dbd6074548379](https://huggingface.co/collections/arrdel/traj-eval-diffusion-lm-reasoning-trajectories-6af321457d8dbd6074548379)
 - **Author:** Adele Chinda (PhD Candidate in NLP, Georgia State University)
-- **Paper status:** in preparation.

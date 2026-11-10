@@ -10,6 +10,13 @@ venv/
 .mypy_cache/
 *.ipynb_checkpoints
 .DS_Store
+Thumbs.db
+.cursor/
+.vscode/
+.idea/
+*.log
+*.bak
+*.swp
 results.json
 .gpu_queue.lock
 .gpu_queue.pid
@@ -17,3 +24,9 @@ results.json
 results/gpu_queue_state.json
 .env
 .env.*
+docs/CURSOR_*.md
+docs/PR_WORKFLOW.md
+docs/paper_outline.md
+docs/x_thread.md
+docs/adapter_dream_scoping.md
+site/preview*.png

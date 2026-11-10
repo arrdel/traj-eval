@@ -291,7 +291,32 @@
     });
   }
 
+  function setupNavigation() {
+    var navToggle = document.getElementById("nav-toggle");
+    var links = document.querySelectorAll('a[href^="#"]');
+    links.forEach(function (link) {
+      link.addEventListener("click", function (ev) {
+        var href = link.getAttribute("href");
+        if (!href || href.length < 2) return;
+        var targetId = href.slice(1);
+        var targetEl = document.getElementById(targetId);
+        if (!targetEl) return;
+        ev.preventDefault();
+        if (navToggle) {
+          navToggle.checked = false;
+        }
+        targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        try {
+          window.history.replaceState(null, "", href);
+        } catch (_err) {
+          // Ignore in sandboxed iframes (e.g. Hugging Face Static Space).
+        }
+      });
+    });
+  }
+
   function init() {
+    setupNavigation();
     var data = loadEmbeddedData();
     renderTwoConditionsChart(data.trajectory_comparison);
     updateStepInspector(data.trajectory_comparison, 5);

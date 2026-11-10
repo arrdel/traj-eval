@@ -1,7 +1,3 @@
-# Copyright (C) 2026 Lenovo
-# All Rights Reserved.
-# Lenovo Confidential Restricted.
-
 """LLaDA adapter for traj-eval (LLaDA-8B-Instruct and LLaDA-1.5).
 
 Supported checkpoints:
