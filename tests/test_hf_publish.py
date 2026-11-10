@@ -10,6 +10,7 @@ from scripts.publish_hf import (
     HF_DIR,
     REPO_ROOT,
     SPACE_SITE_ASSETS,
+    SUITES_64,
     main as publish_hf_main,
     stage_hf_dataset_dir,
     stage_hf_space_dir,
@@ -24,10 +25,17 @@ def test_hf_readmes_exist_have_valid_frontmatter_and_no_em_dashes_or_vendor_head
     assert "sdk: static" in space_md
     assert "app_file: index.html" in space_md
     assert "license: mit" in space_md
+    assert "datasets:" in space_md
+    assert "arrdel/traj-eval-benchmarks" in space_md
+    assert "models:" in space_md
+    assert "Dream-org/Dream-v0-Instruct-7B" in space_md
 
     assert dataset_md.startswith("---\n")
     assert "license: mit" in dataset_md
     assert "task_categories:" in dataset_md
+    assert "configs:" in dataset_md
+    assert "config_name: per_trajectory_metrics" in dataset_md
+    assert "config_name: trajectories" in dataset_md
 
     for name, content in (("space_README.md", space_md), ("dataset_README.md", dataset_md)):
         assert "\u2014" not in content, f"Em dash found in {name}"
@@ -72,7 +80,11 @@ def test_stage_hf_space_and_dataset_dry_run(tmp_path: Path) -> None:
     assert len(staged_results) > 0
     assert (ds_dir / "results" / "baselines.md").exists()
     for f in staged_results:
-        assert "smoke5" not in f.name, f"5-item smoke file leaked into dataset bundle: {f.name}"
+        if f.is_file():
+            assert "smoke5" not in f.name, f"5-item smoke file leaked into dataset bundle: {f.name}"
+
+    metrics_files = list((ds_dir / "results" / "metrics").glob("*_metrics.jsonl"))
+    assert len(metrics_files) == len(SUITES_64)
 
     rc = publish_hf_main(["--staging-root", str(tmp_path / "cli_staging"), "--dry-run"])
     assert rc == 0

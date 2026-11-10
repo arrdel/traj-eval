@@ -8,6 +8,17 @@ app_file: index.html
 pinned: true
 license: mit
 short_description: Denoising trajectory evaluation for diffusion LMs
+models:
+  - Dream-org/Dream-v0-Instruct-7B
+  - GSAI-ML/LLaDA-8B-Instruct
+  - GSAI-ML/LLaDA-1.5
+datasets:
+  - arrdel/traj-eval-benchmarks
+tags:
+  - masked-diffusion
+  - diffusion-language-models
+  - reasoning-trajectories
+  - evaluation
 ---
 
 # traj-eval: Measure reasoning in the denoising trajectory, not just final-answer accuracy
@@ -28,5 +39,6 @@ Two models can have identical final-answer accuracy for very different reasons: 
 - **GitHub Repository:** [https://github.com/arrdel/traj-eval](https://github.com/arrdel/traj-eval)
 - **GitHub Pages Site:** [https://arrdel.github.io/traj-eval/](https://arrdel.github.io/traj-eval/)
 - **Companion Benchmark Dataset:** [https://huggingface.co/datasets/arrdel/traj-eval-benchmarks](https://huggingface.co/datasets/arrdel/traj-eval-benchmarks)
+- **Hugging Face Collection:** [https://huggingface.co/collections/arrdel/traj-eval-diffusion-lm-reasoning-trajectories-6af321457d8dbd6074548379](https://huggingface.co/collections/arrdel/traj-eval-diffusion-lm-reasoning-trajectories-6af321457d8dbd6074548379)
 - **Author:** Adele Chinda (PhD Candidate in NLP, Georgia State University)
 - **Paper status:** in preparation.
