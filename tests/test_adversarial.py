@@ -192,47 +192,50 @@ def test_adversarial_step_ordering_verdicts_outside_ad_and_1mb_unicode_text() ->
 
 
 def test_documented_red_team_findings_linked_to_issues(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """Pin the red-team findings filed in Issues #37, #39, and #40."""
-    # Issue #37 finding 1: directory input to load_trajectories / CLI raises IsADirectoryError.
-    with pytest.raises(IsADirectoryError):
+    """Verify the fixes for Issues #37, #39, and #40."""
+    # Issue #37 fix 1: directory input to load_trajectories raises ValueError, and CLI exits with code 2.
+    with pytest.raises(ValueError, match="directory"):
         load_trajectories(tmp_path)
+    rc_dir = cli_main(["run", "--input", str(tmp_path)])
+    err_dir = capsys.readouterr().err.strip()
+    assert rc_dir == 2
+    assert "\n" not in err_dir
 
-    # Issue #37 finding 2: Infinity in JSON step raises OverflowError.
+    # Issue #37 fix 2: Infinity / NaN in JSON raises ValueError.
     inf_step_file = tmp_path / "inf_step.jsonl"
     inf_step_file.write_text(
         '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":Infinity,"prediction":"A"}]}\n',
         encoding="utf-8",
     )
-    with pytest.raises(OverflowError):
+    with pytest.raises(ValueError, match="invalid JSON"):
         load_trajectories(inf_step_file)
 
-    # Issue #37 finding 3: NaN in committed_reasoning_fraction and string "false" in answer_committed.
     nan_crf_file = tmp_path / "nan_crf.jsonl"
     nan_crf_file.write_text(
-        '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":0,"prediction":42,"answer_committed":"false","committed_reasoning_fraction":NaN}]}\n',
+        '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":0,"prediction":"A","committed_reasoning_fraction":NaN}]}\n',
         encoding="utf-8",
     )
-    loaded_nan = load_trajectories(nan_crf_file)
-    assert loaded_nan[0].steps[0].prediction == "42"
-    assert loaded_nan[0].steps[0].answer_committed is True  # bool("false") == True (Issue #37)
-    assert math.isnan(loaded_nan[0].steps[0].committed_reasoning_fraction)
-    assert unwritten_reasoning_at_convergence(loaded_nan[0]) == 1.0
-    assert order_gap(loaded_nan[0]) is None
+    with pytest.raises(ValueError, match="invalid JSON"):
+        load_trajectories(nan_crf_file)
 
-    # Issue #37 finding 5: negative step numbers and huge step metadata return raw .step outside [0, n_steps).
-    neg_traj = Trajectory(
-        id="neg",
-        prompt="p",
-        gold_answer="A",
-        steps=[
-            TrajectoryStep(step=-5, prediction="A", answer_committed=True),
-            TrajectoryStep(step=10**9, prediction="A", answer_committed=True),
-        ],
-    )
-    assert verdict_convergence_step(neg_traj) == -5
-    assert answer_commitment_step(neg_traj) == -5
+    # Issue #37 fix 3 & 4: boolean step, negative step, duplicate step, non-string prediction,
+    # non-boolean answer_committed, and out-of-range committed_reasoning_fraction all raise ValueError.
+    bad_cases = [
+        '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":true,"prediction":"A"}]}\n',
+        '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":-1,"prediction":"A"}]}\n',
+        '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":0,"prediction":"A"},{"step":0,"prediction":"B"}]}\n',
+        '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":0,"prediction":42}]}\n',
+        '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":0,"prediction":"A","answer_committed":"false"}]}\n',
+        '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":0,"prediction":"A","committed_reasoning_fraction":1.5}]}\n',
+        '{"id":"q1","prompt":"p","gold_answer":"A","steps":[{"step":0,"prediction":"A","committed_reasoning_fraction":[1,2]}]}\n',
+    ]
+    for idx, line in enumerate(bad_cases):
+        p = tmp_path / f"bad_case_{idx}.jsonl"
+        p.write_text(line, encoding="utf-8")
+        with pytest.raises(ValueError):
+            load_trajectories(p)
 
-    # Issue #39 finding: duplicate trajectory IDs overwrite earlier entries in paired_bootstrap_delta.
+    # Issue #39 fix: duplicate trajectory IDs raise ValueError in paired_bootstrap_delta.
     dup_base = [
         Trajectory(id="dup-1", prompt="p", gold_answer="A", steps=[TrajectoryStep(step=0, prediction="A")]),
         Trajectory(id="dup-1", prompt="p", gold_answer="A", steps=[TrajectoryStep(step=0, prediction="B")]),
@@ -241,8 +244,8 @@ def test_documented_red_team_findings_linked_to_issues(tmp_path: Path, capsys: p
         Trajectory(id="dup-1", prompt="p", gold_answer="A", steps=[TrajectoryStep(step=0, prediction="A")]),
         Trajectory(id="dup-1", prompt="p", gold_answer="A", steps=[TrajectoryStep(step=0, prediction="A")]),
     ]
-    boot_dup = paired_bootstrap_delta(dup_base, dup_target, metric="accuracy", n_boot=50, seed=0)
-    assert boot_dup["n_paired"] == 1
+    with pytest.raises(ValueError, match="Duplicate trajectory IDs"):
+        paired_bootstrap_delta(dup_base, dup_target, metric="accuracy", n_boot=50, seed=0)
 
 
 def test_cli_adversarial_exit_codes_and_error_messages(
@@ -306,7 +309,7 @@ def test_adapter_input_validation_with_stubs(tmp_path: Path) -> None:
     )
     assert empty_traj.steps == []
 
-    # Issue #40 finding: malformed item dict missing required keys raises KeyError in run_dream_arcc_smoke / run_llada_smoke.
+    # Issue #40 fix: malformed item dict or invalid config bounds raise ValueError upfront.
     class _StubModel:
         def diffusion_generate(self, *args, **kwargs):
             class _Out:
@@ -322,10 +325,25 @@ def test_adapter_input_validation_with_stubs(tmp_path: Path) -> None:
         out_ids=str(tmp_path / "ids.json"),
         out_log=str(tmp_path / "log.json"),
     )
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError, match="missing required key"):
         run_dream_arcc_smoke([{"prompt": "missing id"}], cfg, model=_StubModel(), tokenizer=_StubTok(), device="cpu")
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError, match="missing required key"):
         run_llada_smoke([{"prompt": "missing id"}], model=_StubModel(), tokenizer=_StubTok(), device="cpu")
+    with pytest.raises(ValueError, match="steps must be > 0"):
+        run_dream_arcc_smoke(
+            [{"id": "1", "prompt": "p", "gold_answer": "A"}],
+            DreamSmokeConfig(steps=0),
+            model=_StubModel(),
+            tokenizer=_StubTok(),
+            device="cpu",
+        )
+
+    from experiments.run_dream_arcc_smoke import main as smoke_cli_main
+
+    assert smoke_cli_main(["--items", str(tmp_path)]) == 2
+    bad_items_p = tmp_path / "bad_items.json"
+    bad_items_p.write_text("{not valid json", encoding="utf-8")
+    assert smoke_cli_main(["--items", str(bad_items_p)]) == 2
 
 
 def test_fuzz_10000_random_trajectories_zero_crashes() -> None:

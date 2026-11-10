@@ -637,6 +637,19 @@ def run_dream_arcc_smoke(
     import subprocess
 
     cfg = config or DEFAULT_SMOKE_CONFIG
+    if cfg.steps <= 0:
+        raise ValueError(f"DreamSmokeConfig.steps must be > 0, got {cfg.steps}")
+    if cfg.max_new_tokens <= 0:
+        raise ValueError(
+            f"DreamSmokeConfig.max_new_tokens must be > 0, got {cfg.max_new_tokens}"
+        )
+    for idx, it in enumerate(items):
+        if not isinstance(it, dict):
+            raise ValueError(f"Item {idx} is not a dict: {it!r}")
+        for req_key in ("id", "prompt", "gold_answer"):
+            if req_key not in it:
+                raise ValueError(f"Item {idx} missing required key {req_key!r}: {it!r}")
+
     if model is None or tokenizer is None:
         # Lazy heavy imports: keep module import light and follow Dream's
         # AutoModel registration (DreamConfig registers AutoModel, not

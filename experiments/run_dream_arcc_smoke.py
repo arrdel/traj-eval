@@ -152,7 +152,23 @@ def main(argv=None) -> int:
             file=sys.stderr,
         )
         return 2
-    items = json.loads(items_path.read_text(encoding="utf-8"))
+    if items_path.is_dir():
+        print(f"ERROR: items path is a directory, expected a JSON file: {items_path}", file=sys.stderr)
+        return 2
+    try:
+        items = json.loads(items_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"ERROR: invalid JSON in items file {items_path}: {exc}", file=sys.stderr)
+        return 2
+    if not isinstance(items, list) or any(
+        not isinstance(it, dict) or any(k not in it for k in ("id", "prompt", "gold_answer"))
+        for it in items
+    ):
+        print(
+            f"ERROR: items file {items_path} must be a JSON list of {{id, prompt, gold_answer}} objects",
+            file=sys.stderr,
+        )
+        return 2
     if len(items) != 5:
         print(f"WARNING: expected 5 items for smoke, got {len(items)}", file=sys.stderr)
 
