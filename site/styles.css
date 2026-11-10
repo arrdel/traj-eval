@@ -23,6 +23,8 @@
 
 html {
   scroll-behavior: smooth;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -30,10 +32,13 @@ body {
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .container {
   max-width: 1120px;
+  width: 100%;
   margin: 0 auto;
   padding: 0 24px;
 }
@@ -55,6 +60,7 @@ code {
   color: #9a3412;
   padding: 2px 6px;
   border-radius: 4px;
+  overflow-wrap: anywhere;
 }
 
 /* Header */
@@ -62,7 +68,7 @@ code {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--card-border);
 }
@@ -71,7 +77,8 @@ code {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 60px;
+  min-height: 60px;
+  gap: 12px;
 }
 
 .brand {
@@ -81,6 +88,7 @@ code {
   color: var(--text);
   font-weight: 600;
   text-decoration: none;
+  min-width: 0;
 }
 
 .brand-badge {
@@ -90,22 +98,32 @@ code {
   border-radius: 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.92rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .brand-sub {
   font-size: 0.88rem;
   color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.nav-toggle,
+.nav-toggle-btn {
+  display: none;
 }
 
 .topnav {
   display: flex;
   gap: 18px;
   font-size: 0.88rem;
+  flex-wrap: wrap;
 }
 
 .topnav a {
   color: var(--text-muted);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .topnav a:hover {
@@ -239,12 +257,14 @@ code {
   border-radius: var(--radius);
   padding: 22px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Archetypes */
 .archetype-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -253,6 +273,7 @@ code {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -266,6 +287,7 @@ code {
   font-weight: 600;
   padding: 2px 9px;
   border-radius: 999px;
+  white-space: nowrap;
 }
 
 .tag-green {
@@ -329,7 +351,7 @@ code {
 
 .legend-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
@@ -337,6 +359,7 @@ code {
   display: inline-block;
   width: 14px;
   height: 14px;
+  margin-top: 4px;
   border-radius: 3px;
   flex-shrink: 0;
 }
@@ -351,7 +374,9 @@ code {
 
 #two-conditions-svg,
 #dream-rat-svg {
+  display: block;
   width: 100%;
+  max-width: 100%;
   height: auto;
   background: var(--code-bg);
   border: 1px solid var(--card-border);
@@ -386,7 +411,8 @@ code {
 
 #sample-step-slider {
   flex: 1;
-  min-width: 220px;
+  min-width: 180px;
+  max-width: 100%;
   accent-color: var(--accent);
   cursor: pointer;
 }
@@ -402,12 +428,15 @@ code {
   border: 1px solid var(--card-border);
   border-radius: 8px;
   padding: 12px;
+  min-width: 0;
 }
 
 .pane-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
   font-size: 0.85rem;
   margin-bottom: 8px;
 }
@@ -420,6 +449,7 @@ code {
   background: #ffedd5;
   color: #9a3412;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .canvas-preview {
@@ -439,6 +469,8 @@ code {
 }
 
 .table-scroll {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
 }
 
@@ -502,7 +534,7 @@ code {
 /* Metrics & Install & Caveats */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 16px;
 }
 
@@ -518,7 +550,7 @@ code {
 
 .install-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
   gap: 18px;
 }
 
@@ -532,7 +564,10 @@ code {
   border: 1px solid var(--card-border);
   border-radius: 8px;
   padding: 14px;
+  max-width: 100%;
   overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
   font-size: 0.84rem;
   line-height: 1.55;
 }
@@ -541,6 +576,7 @@ code {
   background: transparent;
   color: #0f172a;
   padding: 0;
+  overflow-wrap: anywhere;
 }
 
 .caveats-list {
@@ -584,5 +620,199 @@ code {
   .inspector-split,
   .dream-rat-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile phone layout (360 px - 760 px) */
+@media (max-width: 760px) {
+  .container {
+    padding: 0 14px;
+  }
+
+  .hero {
+    padding: 36px 0 32px;
+  }
+
+  .section {
+    padding: 36px 0;
+  }
+
+  .card {
+    padding: 14px;
+  }
+
+  /* Compact, non-overflowing sticky header with collapsible menu */
+  .topbar-inner {
+    min-height: 52px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .brand-sub {
+    display: none;
+  }
+
+  .nav-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+    color: var(--accent-light);
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .topnav {
+    display: none;
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+    padding: 10px 0 4px;
+    margin-top: 6px;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .nav-toggle:checked ~ .topnav {
+    display: grid;
+  }
+
+  .topnav a {
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: var(--bg-alt);
+    color: var(--text);
+    font-size: 0.84rem;
+    font-weight: 500;
+  }
+
+  /* Stacked card layout for wide multi-column tables (zero sideways scrolling) */
+  .table-card {
+    padding: 10px;
+    background: var(--bg-alt);
+  }
+
+  #synthetic-table thead,
+  #results-64-table thead {
+    display: none;
+  }
+
+  #synthetic-table,
+  #synthetic-table tbody,
+  #results-64-table,
+  #results-64-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  #synthetic-table tbody tr,
+  #results-64-table tbody tr {
+    display: block;
+    background: #ffffff;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+
+  #synthetic-table tbody tr:last-child,
+  #results-64-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  #synthetic-table tbody td,
+  #results-64-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+    font-size: 0.85rem;
+  }
+
+  #synthetic-table tbody td:last-child,
+  #results-64-table tbody td:last-child {
+    border-bottom: none;
+  }
+
+  #synthetic-table tbody td::before,
+  #results-64-table tbody td::before {
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  #synthetic-table tbody td:nth-child(1)::before { content: "Archetype"; }
+  #synthetic-table tbody td:nth-child(2)::before { content: "Trajectories"; }
+  #synthetic-table tbody td:nth-child(3)::before { content: "Final Accuracy"; }
+  #synthetic-table tbody td:nth-child(4)::before { content: "Convergence Step"; }
+  #synthetic-table tbody td:nth-child(5)::before { content: "Flip Rate"; }
+  #synthetic-table tbody td:nth-child(6)::before { content: "Rationalization"; }
+
+  #results-64-table tbody td:nth-child(1)::before { content: "Checkpoint"; }
+  #results-64-table tbody td:nth-child(2)::before { content: "Task"; }
+  #results-64-table tbody td:nth-child(3)::before { content: "Condition"; }
+  #results-64-table tbody td:nth-child(4)::before { content: "n"; }
+  #results-64-table tbody td:nth-child(5)::before { content: "Accuracy"; }
+  #results-64-table tbody td:nth-child(6)::before { content: "Coverage"; }
+  #results-64-table tbody td:nth-child(7)::before { content: "Cond. Accuracy"; }
+  #results-64-table tbody td:nth-child(8)::before { content: "Mean Conv. Step"; }
+  #results-64-table tbody td:nth-child(9)::before { content: "Notes"; }
+
+  /* 3-column Dream rationalization table fits side-by-side cleanly */
+  #dream-rat-table th,
+  #dream-rat-table td {
+    padding: 7px 8px;
+    font-size: 0.81rem;
+  }
+
+  /* Trajectory SVG chart: >= 11px effective labels + every-32-step ticks on small screens */
+  #two-conditions-svg text:nth-of-type(-n+3) {
+    font-size: 24px !important;
+    font-weight: 700 !important;
+    text-anchor: start !important;
+    transform: translate(12px, -14px);
+  }
+
+  #two-conditions-svg text:nth-of-type(5),
+  #two-conditions-svg text:nth-of-type(7),
+  #two-conditions-svg text:nth-of-type(9),
+  #two-conditions-svg text:nth-of-type(11),
+  #two-conditions-svg text:nth-of-type(13),
+  #two-conditions-svg text:nth-of-type(15),
+  #two-conditions-svg text:nth-of-type(17),
+  #two-conditions-svg text:nth-of-type(19) {
+    display: none;
+  }
+
+  #two-conditions-svg text:nth-of-type(n+4):nth-of-type(-n+20) {
+    font-size: 23px !important;
+    font-weight: 600;
+  }
+
+  #two-conditions-svg text:nth-of-type(21) {
+    font-size: 23px !important;
+    font-weight: 600;
+  }
+
+  /* Bar chart SVG: larger readable labels on phone */
+  #dream-rat-svg text {
+    font-size: 14px !important;
+  }
+
+  .code-block {
+    padding: 11px;
+    font-size: 0.79rem;
   }
 }
