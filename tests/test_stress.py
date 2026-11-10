@@ -44,7 +44,12 @@ from traj_eval.metrics import (
     unwritten_reasoning_at_convergence,
     verdict_convergence_step,
 )
-from traj_eval.synthetic import _genuine, _oscillation, _rationalization
+from traj_eval.synthetic import (
+    _genuine,
+    _oscillation,
+    _rationalization,
+    generate_synthetic_trajectories,
+)
 from traj_eval.types import Trajectory, TrajectoryStep
 
 HEAVY_STRESS_ENABLED = os.environ.get("TRAJ_EVAL_RUN_HEAVY_STRESS") == "1"
@@ -254,9 +259,17 @@ def test_part2_compare_conditions_antisymmetry_bootstrap_ci_and_determinism(tmp_
     for m_name, boot_ab in cmp_ab["paired_bootstrap"].items():
         boot_ba = cmp_ba["paired_bootstrap"][m_name]
         assert boot_ab["delta"] == pytest.approx(-boot_ba["delta"])
+        assert boot_ab["ci_low"] == pytest.approx(-boot_ba["ci_high"])
+        assert boot_ab["ci_high"] == pytest.approx(-boot_ba["ci_low"])
         # Bootstrap confidence interval contains the point estimate.
         assert boot_ab["ci_low"] <= boot_ab["delta"] <= boot_ab["ci_high"]
         assert boot_ba["ci_low"] <= boot_ba["delta"] <= boot_ba["ci_high"]
+
+    # Order invariance: reversing target list order produces identical bootstrap CIs.
+    cmp_rev = compare_conditions(
+        base, list(reversed(target)), base_label="A", target_label="B", n_boot=500, seed=7
+    )
+    assert cmp_ab["paired_bootstrap"] == cmp_rev["paired_bootstrap"]
 
     fd_ab = forced_deliberation_delta(0.80, 0.70)
     fd_ba = forced_deliberation_delta(0.70, 0.80)
@@ -293,16 +306,21 @@ def test_part1_linear_scaling_and_synthetic_generator_findings() -> None:
     assert ev_64["aggregate"]["n_trajectories"] == 16
     assert ev_256["aggregate"]["n_trajectories"] == 16
 
-    # Pin Issue #38 findings in src/traj_eval/synthetic.py:
-    # 1. _genuine and _oscillation cap at 8 steps even when n_steps=32 is passed.
-    assert len(_genuine(0, n_steps=32).steps) == 8
-    assert len(_oscillation(0, n_steps=32).steps) == 8
-    # 2. _rationalization grows reasoning_text quadratically O(T^2) across steps.
+    # Verify Issue #38 fixes in src/traj_eval/synthetic.py:
+    # 1. _genuine, _oscillation, and generate_synthetic_trajectories honor arbitrary n_steps.
+    assert len(_genuine(0, n_steps=32).steps) == 32
+    assert len(_oscillation(0, n_steps=32).steps) == 32
+    syn_32 = generate_synthetic_trajectories(n_per_archetype=2, n_steps=32)
+    assert all(len(t.steps) == 32 for t in syn_32)
+
+    # 2. _rationalization scales linearly O(T) in string memory while preserving score == 1.0.
     rat_16 = _rationalization(0, n_steps=16)
     rat_32 = _rationalization(0, n_steps=32)
     chars_16 = sum(len(s.reasoning_text) for s in rat_16.steps)
     chars_32 = sum(len(s.reasoning_text) for s in rat_32.steps)
-    assert chars_32 > 3.5 * chars_16
+    assert chars_32 < 2.2 * chars_16
+    assert rationalization_score(rat_32) == pytest.approx(1.0)
+    assert gated_rationalization_score(rat_32) == pytest.approx(1.0)
 
     if HEAVY_STRESS_ENABLED:
         run_heavy_stress_benchmarks()

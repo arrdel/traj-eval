@@ -17,10 +17,15 @@ instead of silently dropping data.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
 from traj_eval.types import Trajectory, TrajectoryStep
+
+
+def _reject_nonfinite_constant(val: str) -> Any:
+    raise ValueError(f"Non-finite JSON constant {val!r} is not allowed")
 
 
 def _parse_step(raw: Any, traj_id: str, idx: int) -> TrajectoryStep:
@@ -28,26 +33,82 @@ def _parse_step(raw: Any, traj_id: str, idx: int) -> TrajectoryStep:
         raise ValueError(f"Trajectory {traj_id!r}: step {idx} is not an object: {raw!r}")
     if "step" not in raw:
         raise ValueError(f"Trajectory {traj_id!r}: step {idx} missing required 'step'")
+    if isinstance(raw["step"], bool):
+        raise ValueError(
+            f"Trajectory {traj_id!r}: step {idx} has boolean 'step': {raw['step']!r}"
+        )
     try:
         step_no = int(raw["step"])
-    except (TypeError, ValueError) as exc:
+    except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError(
             f"Trajectory {traj_id!r}: step {idx} has non-integer 'step': {raw['step']!r}"
         ) from exc
+    if step_no < 0:
+        raise ValueError(
+            f"Trajectory {traj_id!r}: step {idx} has negative 'step': {step_no}"
+        )
+
     # prediction may be None (no verdict yet, Dream adapter) or a string.
     # Missing prediction is treated as None for adapter compatibility.
     raw_pred = raw.get("prediction", None)
     if raw_pred is not None:
-        raw_pred = str(raw_pred)
+        if not isinstance(raw_pred, str):
+            raise ValueError(
+                f"Trajectory {traj_id!r}: step {idx} 'prediction' must be a string or null, "
+                f"got {type(raw_pred).__name__}"
+            )
+
     raw_ans_comm = raw.get("answer_committed", None)
-    ans_comm = bool(raw_ans_comm) if raw_ans_comm is not None else None
+    if raw_ans_comm is not None and not isinstance(raw_ans_comm, bool):
+        raise ValueError(
+            f"Trajectory {traj_id!r}: step {idx} 'answer_committed' must be a boolean or null, "
+            f"got {raw_ans_comm!r}"
+        )
+    ans_comm: bool | None = raw_ans_comm
+
     raw_crf = raw.get("committed_reasoning_fraction", None)
-    crf = float(raw_crf) if raw_crf is not None else None
+    crf: float | None = None
+    if raw_crf is not None:
+        if isinstance(raw_crf, bool):
+            raise ValueError(
+                f"Trajectory {traj_id!r}: step {idx} 'committed_reasoning_fraction' must be a number, "
+                f"got {raw_crf!r}"
+            )
+        try:
+            crf = float(raw_crf)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(
+                f"Trajectory {traj_id!r}: step {idx} has invalid 'committed_reasoning_fraction': {raw_crf!r}"
+            ) from exc
+        if not math.isfinite(crf) or not (0.0 <= crf <= 1.0):
+            raise ValueError(
+                f"Trajectory {traj_id!r}: step {idx} 'committed_reasoning_fraction' must lie in [0, 1], "
+                f"got {crf!r}"
+            )
+
+    raw_conf = raw.get("confidence", None)
+    conf: float | None = None
+    if raw_conf is not None:
+        if isinstance(raw_conf, bool):
+            raise ValueError(
+                f"Trajectory {traj_id!r}: step {idx} 'confidence' must be a number, got {raw_conf!r}"
+            )
+        try:
+            conf = float(raw_conf)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(
+                f"Trajectory {traj_id!r}: step {idx} has invalid 'confidence': {raw_conf!r}"
+            ) from exc
+        if not math.isfinite(conf):
+            raise ValueError(
+                f"Trajectory {traj_id!r}: step {idx} has non-finite 'confidence': {conf!r}"
+            )
+
     return TrajectoryStep(
         step=step_no,
         prediction=raw_pred,
         reasoning_text=str(raw.get("reasoning_text", "") or ""),
-        confidence=raw.get("confidence"),
+        confidence=conf,
         logits=raw.get("logits"),
         answer_committed=ans_comm,
         committed_reasoning_fraction=crf,
@@ -63,6 +124,8 @@ def _parse_trajectory(raw: Any, idx: int) -> Trajectory:
     if not isinstance(raw["steps"], list):
         raise ValueError(f"Trajectory {raw['id']!r}: 'steps' must be a list")
     steps = [_parse_step(s, str(raw["id"]), i) for i, s in enumerate(raw["steps"])]
+    if len({s.step for s in steps}) != len(steps):
+        raise ValueError(f"Trajectory {raw['id']!r}: duplicate step numbers are not allowed")
     return Trajectory(
         id=str(raw["id"]),
         prompt=str(raw["prompt"]),
@@ -81,11 +144,13 @@ def load_trajectories(path: str | Path) -> list[Trajectory]:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ValueError: If the file is empty or malformed.
+        ValueError: If the path is a directory or the file is empty or malformed.
     """
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(f"Input file not found: {p}")
+    if p.is_dir():
+        raise ValueError(f"Input path is a directory, expected a file: {p}")
     text = p.read_text(encoding="utf-8").strip()
     if not text:
         raise ValueError(f"Input file is empty: {p}")
@@ -93,8 +158,8 @@ def load_trajectories(path: str | Path) -> list[Trajectory]:
     # Try JSON first if it looks like a JSON list / object.
     if p.suffix.lower() == ".json" or text.startswith("["):
         try:
-            data = json.loads(text)
-        except json.JSONDecodeError as exc:
+            data = json.loads(text, parse_constant=_reject_nonfinite_constant)
+        except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError(f"Invalid JSON in {p}: {exc}") from exc
         if isinstance(data, dict) and "trajectories" in data:
             data = data["trajectories"]
@@ -109,8 +174,8 @@ def load_trajectories(path: str | Path) -> list[Trajectory]:
         if not line:
             continue
         try:
-            raw = json.loads(line)
-        except json.JSONDecodeError as exc:
+            raw = json.loads(line, parse_constant=_reject_nonfinite_constant)
+        except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError(f"{p}:{lineno}: invalid JSON: {exc}") from exc
         trajectories.append(_parse_trajectory(raw, lineno - 1))
     if not trajectories:
