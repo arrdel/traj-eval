@@ -1,7 +1,7 @@
 # Stress Test and Red-Team Report (`traj-eval`)
 
 Date: 2026-11-10
-Git revision tested: `eb7c070` (`master` after PR #33)
+Git revision tested: `5bdec7d` (`master` after PR #33)
 Tracking issue: [#34](https://github.com/arrdel/traj-eval/issues/34)
 
 ## 1. Machine Specifications and Environment
@@ -86,3 +86,5 @@ All 22 public functions in `src/traj_eval/metrics.py` are property-tested in `te
 | [#38](https://github.com/arrdel/traj-eval/issues/38) | `src/traj_eval/synthetic.py` | 1. `_rationalization(idx, n_steps=T)` has a quadratic $O(T^2)$ string memory and runtime blowup.<br>2. `_genuine(idx, n_steps)` and `_oscillation(idx, n_steps)` slice 8-element lists and silently cap at 8 steps when `n_steps > 8`.<br>3. `generate_synthetic_trajectories` does not expose an `n_steps` parameter. |
 | [#39](https://github.com/arrdel/traj-eval/issues/39) | `src/traj_eval/metrics.py` | 1. `paired_bootstrap_delta` has an IEEE-754 quantile index asymmetry at `ci = 0.90, n_boot = 1000` (`alpha = (1.0 - 0.90)/2.0 = 0.04999999999999999`, so `lo_idx = floor(49.999999999999986) = 49` while `hi_idx = 949` corresponds to index `50` from the top), causing `ci_low(A, B)` to differ slightly from `-ci_high(B, A)`.<br>2. `paired_bootstrap_delta` silently overwrites duplicate trajectory IDs in `base_map` / `target_map` and depends on `base_trajectories` ID ordering.<br>3. Redundant per-trajectory metric recomputation across `evaluate_trajectories`, `stratified_evaluation`, and `compare_conditions`. |
 | [#40](https://github.com/arrdel/traj-eval/issues/40) | `src/traj_eval/adapters/dream.py`, `src/traj_eval/adapters/llada.py`, `experiments/run_dream_arcc_smoke.py` | 1. Missing keys in `items` dicts raise raw `KeyError` after `out_ids` is already written.<br>2. Non-positive `steps` / `max_new_tokens` in `DreamSmokeConfig` are not validated upfront.<br>3. Passing a directory or malformed JSON to `experiments/run_dream_arcc_smoke.py --items` raises an unhandled traceback instead of exiting cleanly with code `2`. |
+
+*(Update: All four follow-up issues [#37](https://github.com/arrdel/traj-eval/issues/37), [#38](https://github.com/arrdel/traj-eval/issues/38), [#39](https://github.com/arrdel/traj-eval/issues/39), and [#40](https://github.com/arrdel/traj-eval/issues/40) were subsequently fixed and closed in [PR #44](https://github.com/arrdel/traj-eval/pull/44).)*

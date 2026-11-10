@@ -372,8 +372,7 @@ def three_clock_disagreement(
 ) -> dict[str, Any]:
     """Identify whether a trajectory falls in the Three-Clock Disagreement Slice.
 
-    Per ``docs/paper_outline.md`` (Section 3.2, Claim C2), the three clocks on
-    a trajectory are:
+    The three clocks tracked on a trajectory are:
     1. Parsed-verdict stabilization (``verdict_convergence_step`` / ``T_stab``).
     2. Irreversible answer-span commitment (``answer_commitment_step`` / ``T_commit``).
     3. Rationale-side completion and post-stability reasoning text change.
@@ -958,7 +957,7 @@ def evaluate_trajectories(trajectories: list[Trajectory]) -> dict[str, Any]:
 
 
 def check_reasoning_smoke_gate(trajectories: Sequence[Trajectory]) -> dict[str, Any]:
-    """Validate the reasoning-condition smoke gate from ``docs/CURSOR_FOLLOWUP_2026-10-29.md`` §4.
+    """Validate the reasoning-condition smoke gate.
 
     Gate requirements:
     1. Commitment fields (``T_commit``, ``stability_commitment_lag``, and
@@ -1049,7 +1048,7 @@ def compare_conditions(
     * Full ``evaluate_trajectories`` aggregate for each condition.
     * Side-by-side rationalization components (``early_factor``,
       ``post_change_rate``, ``length_growth``, ``score``, ``gated_score``) so
-      the scalar is never reported alone (``docs/CURSOR_FOLLOWUP_2026-10-29.md`` §4).
+      the scalar is never reported alone.
     * :func:`forced_deliberation_delta` and :func:`coverage_accuracy_decomposition`.
     * :func:`paired_bootstrap_delta` across accuracy, flip rate,
       rationalization score, gated rationalization score, and convergence

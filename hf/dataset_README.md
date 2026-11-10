@@ -65,7 +65,6 @@ configs:
 
 **Tagline:** Measure reasoning in the denoising trajectory, not just final-answer accuracy.  
 **Author:** Adele Chinda (Department of Computer Science, Georgia State University)  
-**Paper status:** in preparation (target ICLR/ICML 2027)  
 **Code & Evaluation Toolkit:** [https://github.com/arrdel/traj-eval](https://github.com/arrdel/traj-eval)  
 **Project Page:** [https://arrdel.github.io/traj-eval/](https://arrdel.github.io/traj-eval/)  
 **Interactive Hugging Face Space:** [https://huggingface.co/spaces/arrdel/traj-eval](https://huggingface.co/spaces/arrdel/traj-eval)  

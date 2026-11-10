@@ -49,4 +49,4 @@ Each run: log every step to the traj-eval JSONL schema, score with `python -m tr
 
 - If the trajectory metrics do not separate conditions on the MMaDA holdout the way they do on the text trio (convergence step and flip rate show no systematic difference between direct and reasoning conditions while accuracy differs), the trajectory signal does not generalize, and the claim narrows to the measured checkpoints.
 - If rationalization-style trajectories (early lock-in with post-change text growth) appear at the same rate under both conditions, the rationalization decomposition does not discriminate conditions, and it stays a descriptive diagnostic only.
-- If the MMaDA holdout shows no trajectory information beyond final accuracy, the paper claim becomes: trajectory evaluation is informative on the measured text checkpoints only, and the multimodal extension is future work.
+- If the MMaDA holdout shows no trajectory information beyond final accuracy, the conclusion becomes: trajectory evaluation is informative on the measured text checkpoints only, and the multimodal extension is future work.

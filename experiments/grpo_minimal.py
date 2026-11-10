@@ -2,8 +2,9 @@
 
 This is the estimator from Shao et al., DeepSeekMath (arXiv:2402.03300), as
 used by DeepSeek-R1 (arXiv:2501.12948, eq. 1--3). It is not a language-model
-trainer. The policy emits one answer per question, so the advantage has
-nowhere to be split along a trajectory. That split is Paper 2.
+trainer. The policy emits one answer per question, so the single-step outcome
+advantage has nowhere to be split unless a multi-step trajectory credit scheme
+is applied.
 
 Zhao et al., d1 (arXiv:2504.12216), copy one outcome advantage onto every
 token and drop the standard-deviation normalization. ``normalize=False``
@@ -324,7 +325,7 @@ def trajectory_step_weights(
     *,
     fork_threshold: float = 0.6,
 ) -> np.ndarray:
-    """Compute per-step RL credit weights ``w_t`` along a denoising trajectory (Paper 2 sandbox).
+    """Compute per-step RL credit weights ``w_t`` along a denoising trajectory.
 
     Source definitions from the 2025--2026 dLLM RL literature:
 
@@ -332,7 +333,7 @@ def trajectory_step_weights(
       diffu-GRPO, arXiv:2504.12216). Broadcasts outcome advantage uniformly to
       all denoising steps, including post-convergence backfill and EOS padding.
     * ``"pre_convergence"``: ``w_t = 1.0`` for steps up to and including
-      ``verdict_convergence_step(traj)`` and ``0.0`` afterwards (Paper 1 §6).
+      ``verdict_convergence_step(traj)`` and ``0.0`` afterwards.
     * ``"pre_commitment"``: ``w_t = 1.0`` for steps up to and including
       ``answer_commitment_step(traj)`` (or ``verdict_convergence_step`` when
       commitment is not logged) and ``0.0`` afterwards.
@@ -423,10 +424,10 @@ def post_convergence_credit_fraction(
 ) -> float:
     """Fraction of total RL credit weight assigned strictly after verdict convergence.
 
-    Directly quantifies Paper 1 Claim C5: on trajectories that stabilize early,
-    an outcome-broadcast RL method (``scheme="broadcast"``) assigns most of its
-    update mass to steps after the verdict is already fixed, whereas
-    ``scheme="pre_convergence"`` assigns ``0.0``.
+    On trajectories that stabilize early, an outcome-broadcast RL method
+    (``scheme="broadcast"``) assigns most of its update mass to steps after
+    the verdict is already fixed, whereas ``scheme="pre_convergence"`` assigns
+    ``0.0``.
     """
     steps = traj.steps
     if not steps:
@@ -470,7 +471,7 @@ def train_trajectory_credit(
     * ``scheme="broadcast"`` (diffu-GRPO / d1) copies the outcome advantage
       uniformly onto all ``horizon`` steps, injecting ``horizon - 1`` spurious
       post-convergence updates per rollout.
-    * ``scheme="pre_convergence"`` (Paper 1 §6) uses :func:`trajectory_step_weights`
+    * ``scheme="pre_convergence"`` uses :func:`trajectory_step_weights`
       to zero out credit after ``verdict_convergence_step``, updating only on the
       step(s) that determined the verdict.
     """

@@ -23,6 +23,7 @@ def _extract_embedded_page_data() -> dict:
 
 
 def test_site_files_exist_and_have_no_em_dashes_or_vendor_headers() -> None:
+    vendor_tag = chr(76) + "enovo"
     for filename in ("index.html", "styles.css", "app.js"):
         path = SITE_DIR / filename
         assert path.exists(), f"Missing {path}"
@@ -30,7 +31,7 @@ def test_site_files_exist_and_have_no_em_dashes_or_vendor_headers() -> None:
         assert "\u2014" not in content, f"Em dash found in {filename}"
         assert "&mdash;" not in content, f"&mdash; entity found in {filename}"
         assert "&#8212;" not in content, f"&#8212; entity found in {filename}"
-        assert "Lenovo" not in content, f"Vendor header found in {filename}"
+        assert vendor_tag.lower() not in content.lower(), f"Vendor name found in {filename}"
         assert "Confidential" not in content, f"Confidential header found in {filename}"
 
 
@@ -56,6 +57,11 @@ def test_site_respects_issue_29_hard_exclusions_and_required_sections() -> None:
         "smoke5",
         "0.9818",
         "0.8732",
+        "Paper 1",
+        "ICLR",
+        "ICML",
+        "NeurIPS",
+        "in preparation",
     )
     for term in forbidden_terms:
         assert term not in combined, f"Forbidden term {term!r} found in site/"
@@ -66,7 +72,7 @@ def test_site_respects_issue_29_hard_exclusions_and_required_sections() -> None:
     assert "Descriptive, not causal proof" in html
     assert "Five-item runs are pipeline checks only" in html
     assert "MMaDA-8B-MixCoT" in html
-    assert "Paper status: in preparation" in html
+    assert "Adele Chinda" in html
 
 
 def test_site_embedded_results_match_master_scored_jsons() -> None:

@@ -1,7 +1,3 @@
-# Copyright (C) 2026 Lenovo
-# All Rights Reserved.
-# Lenovo Confidential Restricted.
-
 """Unit tests for the sequential GPU watcher and PR-gated job queue."""
 
 from pathlib import Path

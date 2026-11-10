@@ -1,7 +1,3 @@
-# Copyright (C) 2026 Lenovo
-# All Rights Reserved.
-# Lenovo Confidential Restricted.
-
 """Tests for LLaDA adapter (LLaDA-8B-Instruct and LLaDA-1.5).
 
 No torch / transformers / weights. All model and tokenizer objects are stubs.

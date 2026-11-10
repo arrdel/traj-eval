@@ -21,7 +21,7 @@ Forced deliberation is not defined on this file. The function only subtracts two
 
 ## Real checkpoints — status overview
 
-Chosen 17 Oct 2026. Text trio first, because Yeom et al. (arXiv:2608.05687) already published commitment-order numbers on these three and the paper has to be comparable. MMaDA is the later modality holdout from the research plan, not a substitute for LLaDA-1.5 in the first table.
+Chosen 17 Oct 2026. Text trio first (`LLaDA-8B-Instruct`, `LLaDA-1.5`, and `Dream-v0-Instruct-7B`), so commitment-order and trajectory measurements are directly comparable across open diffusion LMs. `MMaDA-8B-MixCoT` is the later modality holdout, not a substitute for `LLaDA-1.5` in the first table.
 
 | Checkpoint | Hugging Face id | Status |
 |---|---|---|
@@ -29,6 +29,35 @@ Chosen 17 Oct 2026. Text trio first, because Yeom et al. (arXiv:2608.05687) alre
 | LLaDA-1.5 | `GSAI-ML/LLaDA-1.5` | All 5-item (ARC-C direct, ARC-C reasoning, GSM8K) and 64-item (ARC-C direct, ARC-C canonical reasoning, GSM8K) suites completed (2026-11-01). |
 | Dream-v0-Instruct-7B | `Dream-org/Dream-v0-Instruct-7B` | 5-item ARC-C direct, reasoning, EOS-suppression K=64, & GSM8K smokes clean + 64-item ARC-C paired (direct & canonical reasoning) and 64-item GSM8K suites completed (2026-10-30 / 2026-11-01). |
 | MMaDA-8B-MixCoT (holdout) | `Gen-Verse/MMaDA-8B-MixCoT` | Not in the first suite. |
+
+### 64-Item Benchmark Summary (Main Suites)
+
+Five-item runs below are pipeline checks only and are excluded from this summary table.
+
+| Checkpoint | Task | Condition | n | Accuracy | Coverage | Conditional Accuracy | Mean Convergence Step | Notes | Scored JSON |
+|---|---|---|---:|---:|---:|---:|---:|---|---|
+| `Dream-v0-Instruct-7B` | `ARC-C` | `direct` | 64 | `0.8906` | `1.0000` | `0.8906` | `3.8` | 64 of 64 decided | `results/dream_arcc_smoke64_direct_results.json` |
+| `Dream-v0-Instruct-7B` | `ARC-C` | `reasoning` | 64 | `0.8281` | `0.9844` | `0.8413` | `189.5` | One undecided (`Mercury_412681`, truncated during option analysis) | `results/dream_arcc_smoke64_reasoning_results.json` |
+| `LLaDA-8B-Instruct` | `ARC-C` | `direct` | 64 | `0.8750` | `1.0000` | `0.8750` | `4.5` | 64 of 64 decided | `results/llada_instruct_arcc_smoke64_direct_results.json` |
+| `LLaDA-8B-Instruct` | `ARC-C` | `reasoning` | 64 | `0.9062` | `1.0000` | `0.9062` | `32.1` | 64 of 64 decided | `results/llada_instruct_arcc_smoke64_reasoning_results.json` |
+| `LLaDA-1.5` | `ARC-C` | `direct` | 64 | `0.8750` | `1.0000` | `0.8750` | `7.4` | 64 of 64 decided | `results/llada_15_arcc_smoke64_direct_results.json` |
+| `LLaDA-1.5` | `ARC-C` | `reasoning` | 64 | `0.9219` | `1.0000` | `0.9219` | `21.7` | 64 of 64 decided | `results/llada_15_arcc_smoke64_reasoning_results.json` |
+| `Dream-v0-Instruct-7B` | `GSM8K` | `numeric` | 64 | `0.7656` | `0.9688` | `0.7903` | `161.3` | 62 of 64 decided | `results/dream_gsm8k_smoke64_results.json` |
+| `LLaDA-8B-Instruct` | `GSM8K` | `numeric` | 64 | `0.6562` | `1.0000` | `0.6562` | `78.3` | 64 of 64 decided | `results/llada_instruct_gsm8k_smoke64_results.json` |
+| `LLaDA-1.5` | `GSM8K` | `numeric` | 64 | `0.6094` | `1.0000` | `0.6094` | `72.2` | 64 of 64 decided | `results/llada_15_gsm8k_smoke64_results.json` |
+
+**Opposite prompt effects across model families:** On `Dream-v0-Instruct-7B`, direct beats reasoning on accuracy (`0.8906` vs `0.8281`). On `LLaDA-8B-Instruct`, reasoning beats direct (`0.9062` vs `0.8750`), and on `LLaDA-1.5`, reasoning also beats direct (`0.9219` vs `0.8750`). Both directions are reported as measured without smoothing over or explaining away the difference.
+
+#### Rationalization components (`Dream-v0-Instruct-7B` only, ARC-C 64-item)
+
+Side-by-side decomposition from `results/dream_arcc_smoke64_direct_vs_reasoning.json`:
+
+| Component | Direct (`direct_64`) | Reasoning (`reasoning_64`) |
+|---|---:|---:|
+| `early_factor` | `0.9852` | `0.2559` |
+| `post_change_rate` | `0.0001` | `0.1597` |
+| `length_growth` | `0.0035` | `0.0203` |
+| `gated` | `0.0012` | `0.0125` |
 
 Historical note (17 Oct 2026): no checkpoints were run on initial commit because all eight RTX A6000s were occupied (~43 GB of 49 GB, 100% utilization) and the base environment PyTorch (`2.11.0+cu130`) could not see the CUDA 12.1 driver. Subsequent runs below use a pinned `transformers==4.46.2` CUDA environment (`cdr-gpu` on `titan3` and `.venv-gpu` on `ai-lab2`) with one dedicated GPU per run and full run logs.
 
@@ -148,14 +177,14 @@ Under the direct-answer prompt template in `results/dream_arcc_smoke5_input.json
 
 ## Prompt Condition Decision & File Mapping (Issue #4 Reconciliation)
 
-Per Issue #4 and `docs/CURSOR_FOLLOWUP_2026-10-30.md` §3b, ARC-C evaluation uses **Option (a)**: the full ARC-C reasoning condition uses the **canonical reasoning prompt** at both 5-item and 64-item scale, and the earlier 2–3-sentence `cot` prompt files (`results/dream_arcc_cot_smoke5_input.json`, `results/dream_arcc_cot_smoke5_ids.json`, `results/arcc_smoke64_cot_input.json`) are **retired and removed** so prompt wording is never swapped between 5-item and 64-item runs. Direct and reasoning conditions are always reported side by side, never pooled into a single accuracy number.
+Per Issue #4, ARC-C evaluation uses **Option (a)**: the full ARC-C reasoning condition uses the **canonical reasoning prompt** at both 5-item and 64-item scale, and the earlier 2–3-sentence `cot` prompt files (`results/dream_arcc_cot_smoke5_input.json`, `results/dream_arcc_cot_smoke5_ids.json`, `results/arcc_smoke64_cot_input.json`) are **retired and removed** so prompt wording is never swapped between 5-item and 64-item runs. Direct and reasoning conditions are always reported side by side, never pooled into a single accuracy number.
 
 | Condition | Exact closing prompt instruction | 5-item files (`Mercury_7175875` .. `MCAS_2006_9_44`) | 64-item files (first 64 4-option A–D test items) |
 |---|---|---|---|
 | `direct` | `Respond in the form "Answer: <letter>" with the letter of the correct option.` | `results/dream_arcc_smoke5_input.json`, `results/dream_arcc_smoke5_ids.json`, `results/dream_arcc_smoke5.jsonl`, `results/dream_arcc_smoke5_run_log.json`, `results/dream_arcc_smoke5_results.json` | `results/arcc_smoke64_direct_input.json`, `results/arcc_smoke64_ids.json` |
 | `reasoning` (canonical) | `Think step by step, then give your final answer in the form "Answer: <letter>".` | `results/dream_arcc_smoke5_reasoning_input.json`, `results/dream_arcc_smoke5_reasoning_ids.json`, `results/dream_arcc_smoke5_reasoning.jsonl`, `results/dream_arcc_smoke5_reasoning_run_log.json`, `results/dream_arcc_smoke5_reasoning_results.json` | `results/arcc_smoke64_reasoning_input.json`, `results/arcc_smoke64_ids.json` |
 
-## Pre-registered Gated Sequence (`docs/CURSOR_FOLLOWUP_2026-10-30.md` §§5–6)
+## Pre-registered Gated Sequence
 
 This list is a **gated pre-registration sequence**, executed one stage at a time by `scripts/gpu_job_queue.py` whenever a GPU with `>= 25 GB` free VRAM is available. Each stage opens its own PR against `master` and waits for review/merge before the next stage starts.
 
@@ -167,7 +196,7 @@ This list is a **gated pre-registration sequence**, executed one stage at a time
    - Canonical reasoning input: `results/arcc_smoke64_reasoning_input.json` (exact same closing line as Stage 1: `Think step by step, then give your final answer in the form "Answer: <letter>".`).
 3. **Stage 3 — Dream-7B GSM8K 5-item numeric smoke (`extract_gsm8k_verdict` + exemplar stripping):**
    - Inputs & IDs: `results/dream_gsm8k_smoke5_input.json`, `results/dream_gsm8k_smoke5_ids.json`
-4. **Stage 4 — Dream-7B EOS-suppression K=64 5-item smoke (`--force-deliberation-steps 64`, named `EOS-suppression K=64` per `docs/CURSOR_FOLLOWUP_2026-10-30.md` §3c, separate from the post-stability protocol):**
+4. **Stage 4 — Dream-7B EOS-suppression K=64 5-item smoke (`--force-deliberation-steps 64`, named `EOS-suppression K=64`, separate from the post-stability protocol):**
    - Inputs & IDs: `results/dream_arcc_smoke5_input.json`, `results/dream_arcc_smoke5_ids.json`
    - Outputs: `results/dream_arcc_eos_suppression_k64_smoke5.{jsonl,run_log.json,results.json}`
 5. **Stage 5 — LLaDA-8B-Instruct and LLaDA-1.5 5-item ARC-C validation smokes (direct + canonical reasoning):**
@@ -204,7 +233,7 @@ This list is a **gated pre-registration sequence**, executed one stage at a time
   - Scored output: `results/dream_arcc_smoke5_reasoning_results.json`
   - Side-by-side comparison JSON: `results/dream_arcc_smoke5_direct_vs_reasoning.json`
 - **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
-- **Reasoning smoke gate (`CURSOR_FOLLOWUP_2026-10-30` §5):** `reasoning smoke clean` (commitment clocks on `5/5`, post-verdict change on `3`, pre-verdict rationale on `5`).
+- **Reasoning smoke gate:** `reasoning smoke clean` (commitment clocks on `5/5`, post-verdict change on `3`, pre-verdict rationale on `5`).
 
 ### Pasted `traj-eval run` output
 
@@ -639,7 +668,7 @@ MCAS_2006_9_44       D        D      Y     2     0.000  0.997  256
   - Run log: `results/llada_instruct_arcc_smoke5_reasoning_run_log.json`
   - Scored output: `results/llada_instruct_arcc_smoke5_reasoning_results.json`
 - **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
-- **Reasoning smoke gate (`CURSOR_FOLLOWUP_2026-10-30` §5):** `reasoning smoke clean` (commitment clocks on `5/5`, post-verdict change on `5`, pre-verdict rationale on `3`).
+- **Reasoning smoke gate:** `reasoning smoke clean` (commitment clocks on `5/5`, post-verdict change on `5`, pre-verdict rationale on `3`).
 
 ### Pasted `traj-eval run` output
 
@@ -812,7 +841,7 @@ MCAS_2006_9_44       D        D      Y     2     0.000  0.997  256
   - Run log: `results/llada_15_arcc_smoke5_reasoning_run_log.json`
   - Scored output: `results/llada_15_arcc_smoke5_reasoning_results.json`
 - **Undecided count:** **0 undecided** (5 / 5 non-null at final step).
-- **Reasoning smoke gate (`CURSOR_FOLLOWUP_2026-10-30` §5):** `reasoning smoke clean` (commitment clocks on `5/5`, post-verdict change on `5`, pre-verdict rationale on `3`).
+- **Reasoning smoke gate:** `reasoning smoke clean` (commitment clocks on `5/5`, post-verdict change on `5`, pre-verdict rationale on `3`).
 
 ### Pasted `traj-eval run` output
 

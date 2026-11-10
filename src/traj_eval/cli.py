@@ -148,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument(
         "--check-reasoning-gate",
         action="store_true",
-        help="Validate CURSOR_FOLLOWUP_2026-10-29 §4 reasoning smoke gate",
+        help="Validate the reasoning-condition smoke gate",
     )
     p_run.set_defaults(func=_cmd_run)
 

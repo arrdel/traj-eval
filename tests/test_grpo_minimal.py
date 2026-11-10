@@ -72,7 +72,7 @@ def test_trajectory_step_weights_and_post_convergence_credit():
     assert np.allclose(w_broad, [1.0, 1.0, 1.0, 1.0, 1.0])
     assert post_convergence_credit_fraction(t, scheme="broadcast") == pytest.approx(0.6)
 
-    # 2. Pre-convergence (Paper 1 §6): 0% post-convergence credit.
+    # 2. Pre-convergence: 0% post-convergence credit.
     w_pre_conv = trajectory_step_weights(t, scheme="pre_convergence")
     assert np.allclose(w_pre_conv, [1.0, 1.0, 0.0, 0.0, 0.0])
     assert post_convergence_credit_fraction(t, scheme="pre_convergence") == 0.0
