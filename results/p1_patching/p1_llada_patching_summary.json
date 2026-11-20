@@ -1,0 +1,48 @@
+{
+  "model_id": "GSAI-ML/LLaDA-8B-Instruct",
+  "layer_idx": 16,
+  "n_items": 64,
+  "baseline_accuracy": 0.90625,
+  "conditions": [
+    {
+      "name": "patch_k15",
+      "jsonl": "results/p1_patching/p1_llada_patch_k15.jsonl",
+      "n": 64,
+      "accuracy": 0.90625,
+      "verdict_flip_rate": 0.03125,
+      "verdict_flip_se": 0.02174907954230477,
+      "mean_commit_step_delta": -11.28125,
+      "se_commit_step_delta": 5.34079039456619
+    },
+    {
+      "name": "patch_k25",
+      "jsonl": "results/p1_patching/p1_llada_patch_k25.jsonl",
+      "n": 64,
+      "accuracy": 0.890625,
+      "verdict_flip_rate": 0.015625,
+      "verdict_flip_se": 0.015502449088269086,
+      "mean_commit_step_delta": -9.5,
+      "se_commit_step_delta": 4.836513731952498
+    },
+    {
+      "name": "patch_k35",
+      "jsonl": "results/p1_patching/p1_llada_patch_k35.jsonl",
+      "n": 64,
+      "accuracy": 0.890625,
+      "verdict_flip_rate": 0.03125,
+      "verdict_flip_se": 0.02174907954230477,
+      "mean_commit_step_delta": -10.375,
+      "se_commit_step_delta": 3.9534430945173984
+    },
+    {
+      "name": "patch_k5",
+      "jsonl": "results/p1_patching/p1_llada_patch_k5.jsonl",
+      "n": 64,
+      "accuracy": 0.90625,
+      "verdict_flip_rate": 0.0,
+      "verdict_flip_se": 0.0,
+      "mean_commit_step_delta": -4.296875,
+      "se_commit_step_delta": 6.582643110573485
+    }
+  ]
+}

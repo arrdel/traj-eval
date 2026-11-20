@@ -11,9 +11,11 @@ from traj_eval.adapters.llada import (
     LLADA_15_ID,
     LLADA_INSTRUCT_ID,
     LLADA_MASK_TOKEN_ID,
+    HiddenPatchSpec,
     LLaDASmokeConfig,
     compute_transfer_schedule,
     llada_history_to_trajectory,
+    resolve_transformer_blocks,
     run_llada_smoke,
 )
 from traj_eval.io import load_trajectories
@@ -135,3 +137,25 @@ def test_llada_config_serializes_frontier_width():
     cfg = LLaDASmokeConfig(frontier_width=16)
     d = cfg.to_dict()
     assert d["frontier_width"] == 16
+
+
+def test_resolve_transformer_blocks_and_patch_spec():
+    class FakeInner:
+        def __init__(self):
+            self.blocks = ["b0", "b1"]
+
+    class FakeModel:
+        def __init__(self):
+            class _M:
+                transformer = FakeInner()
+            self.model = _M()
+
+    assert resolve_transformer_blocks(FakeModel()) == ["b0", "b1"]
+    with pytest.raises(AttributeError):
+        resolve_transformer_blocks(object())
+
+    spec = HiddenPatchSpec(layer_idx=12, capture_steps=(5, 15), patch_step=10)
+    assert spec.layer_idx == 12
+    assert spec.capture_steps == (5, 15)
+    assert spec.patch_step == 10
+    assert spec.gen_only is True

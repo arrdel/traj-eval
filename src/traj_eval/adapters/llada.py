@@ -45,6 +45,41 @@ LLADA_EOS_TOKEN_ID = 126081
 LLADA_EOT_TOKEN_ID = 126348
 
 
+@dataclass
+class HiddenPatchSpec:
+    """Adapter-level hidden-state capture and patching spec for denoising steps."""
+
+    layer_idx: int = 16
+    capture_steps: tuple[int, ...] = ()
+    patch_step: int | None = None
+    patch_hidden: Any | None = None
+    gen_only: bool = True
+
+
+def resolve_transformer_blocks(model: Any) -> Any:
+    """Locate the sequence of transformer blocks/layers on a causal/diffusion LM."""
+    candidates = (
+        ("model", "transformer", "blocks"),
+        ("model", "layers"),
+        ("transformer", "blocks"),
+        ("transformer", "h"),
+        ("layers",),
+    )
+    for path in candidates:
+        cur = model
+        ok = True
+        for attr in path:
+            cur = getattr(cur, attr, None)
+            if cur is None:
+                ok = False
+                break
+        if ok and hasattr(cur, "__len__") and hasattr(cur, "__getitem__"):
+            return cur
+    raise AttributeError(
+        f"Could not locate transformer blocks on {type(model).__name__}"
+    )
+
+
 def compute_transfer_schedule(block_length: int, steps_per_block: int) -> list[int]:
     """Compute per-step token transfer counts for one block of length ``block_length``.
 
@@ -124,6 +159,8 @@ def llada_diffusion_generate(
     logits_eos_inf: bool = False,
     confidence_eos_eot_inf: bool = True,
     frontier_width: int | None = None,
+    patch_spec: HiddenPatchSpec | None = None,
+    captured_hidden: dict[int, Any] | None = None,
 ) -> tuple[Any, list[Any]]:
     """Run LLaDA blockwise masked diffusion decoding and record full step history.
 
@@ -178,14 +215,45 @@ def llada_diffusion_generate(
     else:
         full_attn = None
 
+    blocks = resolve_transformer_blocks(model) if patch_spec is not None else None
+    capture_set = set(patch_spec.capture_steps) if patch_spec is not None else set()
+
     history: list[Any] = []
     with torch.no_grad():
         for b_idx in range(num_blocks):
             block_start = prompt_len + b_idx * block_length
             block_end = prompt_len + (b_idx + 1) * block_length
             for s_idx in range(steps_per_block):
+                global_step = b_idx * steps_per_block + s_idx
                 mask_index = x == mask_id
-                logits = model(x, attention_mask=full_attn).logits
+                hook_handle = None
+                if patch_spec is not None and blocks is not None and (
+                    global_step in capture_set or patch_spec.patch_step == global_step
+                ):
+                    target_block = blocks[patch_spec.layer_idx]
+
+                    def _step_hook(_mod: Any, _inp: Any, output: Any) -> Any:
+                        is_tuple = isinstance(output, tuple)
+                        h = output[0] if is_tuple else output
+                        if global_step in capture_set and captured_hidden is not None:
+                            sl = h[:, prompt_len:, :] if patch_spec.gen_only else h
+                            captured_hidden[global_step] = sl.detach().cpu().clone()
+                        if patch_spec.patch_step == global_step and patch_spec.patch_hidden is not None:
+                            h_new = h.clone()
+                            rep = patch_spec.patch_hidden.to(device=h.device, dtype=h.dtype)
+                            if patch_spec.gen_only:
+                                h_new[:, prompt_len:, :] = rep
+                            else:
+                                h_new[...] = rep
+                            return (h_new, *output[1:]) if is_tuple else h_new
+                        return output
+
+                    hook_handle = target_block.register_forward_hook(_step_hook)
+                try:
+                    logits = model(x, attention_mask=full_attn).logits
+                finally:
+                    if hook_handle is not None:
+                        hook_handle.remove()
                 if logits_eos_inf:
                     logits[:, :, LLADA_EOS_TOKEN_ID] = -torch.inf
                 if temperature > 0.0:
