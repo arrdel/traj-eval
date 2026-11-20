@@ -5,6 +5,26 @@
   "baseline_accuracy": 0.90625,
   "conditions": [
     {
+      "name": "noise_k25",
+      "jsonl": "results/p1_patching/p1_llada_noise_k25.jsonl",
+      "n": 64,
+      "accuracy": 0.90625,
+      "verdict_flip_rate": 0.0,
+      "verdict_flip_se": 0.0,
+      "mean_commit_step_delta": 2.4375,
+      "se_commit_step_delta": 3.574662474354125
+    },
+    {
+      "name": "noise_k5",
+      "jsonl": "results/p1_patching/p1_llada_noise_k5.jsonl",
+      "n": 64,
+      "accuracy": 0.90625,
+      "verdict_flip_rate": 0.0,
+      "verdict_flip_se": 0.0,
+      "mean_commit_step_delta": 4.71875,
+      "se_commit_step_delta": 3.9574540846788446
+    },
+    {
       "name": "patch_k15",
       "jsonl": "results/p1_patching/p1_llada_patch_k15.jsonl",
       "n": 64,
@@ -33,6 +53,16 @@
       "verdict_flip_se": 0.02174907954230477,
       "mean_commit_step_delta": -10.375,
       "se_commit_step_delta": 3.9534430945173984
+    },
+    {
+      "name": "patch_k45",
+      "jsonl": "results/p1_patching/p1_llada_patch_k45.jsonl",
+      "n": 64,
+      "accuracy": 0.875,
+      "verdict_flip_rate": 0.03125,
+      "verdict_flip_se": 0.02174907954230477,
+      "mean_commit_step_delta": -9.03125,
+      "se_commit_step_delta": 3.619074847661511
     },
     {
       "name": "patch_k5",
